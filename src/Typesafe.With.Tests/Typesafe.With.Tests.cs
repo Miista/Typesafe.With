@@ -1,4 +1,10 @@
-﻿using System;
+﻿// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable UnassignedGetOnlyAutoProperty
+// ReSharper disable InconsistentNaming
+// ReSharper disable CheckNamespace
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +19,6 @@ using Xunit;
 // ReSharper disable InconsistentNaming
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 
-// ReSharper disable once CheckNamespace
 namespace Typesafe.With.Tests
 {
     public class Tests
