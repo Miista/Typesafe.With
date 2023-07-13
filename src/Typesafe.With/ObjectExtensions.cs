@@ -19,7 +19,7 @@ namespace Typesafe.With
             var propertyName = propertyPicker.GetPropertyName();
             var properties = new Dictionary<string, object>
             {
-                {propertyName, new DependentValue(propertyValueFactory)}
+                {propertyName, new DependentValue(propertyValueFactory, instance)}
             };
 
             Validate<T>(propertyName);

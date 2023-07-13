@@ -1027,6 +1027,7 @@ namespace Typesafe.With.Tests
                 // Assert
                 result.Should().NotBeNull();
                 result.Names.Should().HaveCount(2, because: "there are 2 elements in the list");
+                result.Names.Should().BeEquivalentTo(new[] { item1, item2 });
             }
         }
     }
