@@ -27,7 +27,7 @@ namespace Typesafe.With
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
 
-            if (remainingPropertiesAfterPropSet.Count != 0)
+            if (remainingPropertiesAfterPropSet.Count > 0)
             {
                 throw new InvalidOperationException($"Error creating instance of type '{typeof(T)}': There are still properties to set but no way to set them.");
             }
@@ -163,6 +163,7 @@ namespace Typesafe.With
                 publicProperties.Remove(parameter);
             }
 
+            // Only take the properties which we can write to
             return publicProperties.Values.Where(info => info.CanWrite);
             
             IEnumerable<string> GetConstructorParameterNames()
