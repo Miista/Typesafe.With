@@ -69,7 +69,7 @@ namespace Typesafe.With
                 var hasNewValue = newProperties.TryGetValue(propertyName, out var newValue);
                 var value = hasNewValue
                     ? newValue is DependentValue dependentValue
-                        ? dependentValue.Resolve(existingProperty) //dependentValueResolver.Resolve(dependentValue, existingProperty))
+                        ? dependentValue.Resolve(existingProperty)
                         : newValue
                     : originalValue;
 
@@ -129,7 +129,7 @@ namespace Typesafe.With
                 }
 
                 var value = property.Value is DependentValue dependentValue
-                    ? dependentValue.Resolve(existingProperty) //dependentValueResolver.Resolve(dependentValue, existingProperty))
+                    ? dependentValue.Resolve(existingProperty)
                     : property.Value;
                 
                 existingProperty.SetValue(instance, value);
