@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Typesafe.With")]
-[assembly: InternalsVisibleTo("Typesafe.Merge")]
-[assembly: InternalsVisibleTo("Typesafe")]
-namespace Typesafe.Kernel
+namespace Typesafe.With
 {
     internal static class ExpressionExtensions
     {

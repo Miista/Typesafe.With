@@ -5,8 +5,4 @@
     <LangVersion>7.2</LangVersion>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Typesafe.Kernel\Typesafe.Kernel.csproj" />
-  </ItemGroup>
-
 </Project>
