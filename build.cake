@@ -1,6 +1,6 @@
 var target = Argument("target", "Default");
 
-var solutionFile = "./src/Typed.sln";
+var solutionFile = "./src/Typesafe.With.sln";
 
 Task("Build")
   .Does(() =>
