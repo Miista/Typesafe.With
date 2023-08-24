@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Typesafe.Kernel;
 
 namespace Typesafe.With.Sequence
 {

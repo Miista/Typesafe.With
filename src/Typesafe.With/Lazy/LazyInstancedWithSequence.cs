@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using Typesafe.Kernel;
 using Typesafe.With.Sequence;
 
 namespace Typesafe.With.Lazy
