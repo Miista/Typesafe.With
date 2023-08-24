@@ -57,7 +57,6 @@ namespace Typesafe.With.Lazy
             return new LazyInstancedWithSequence<T>(instance).With(propertyPicker, propertyValueFactory);
         }
 
-
         private static void Validate<T>(string propertyName)
         {
             // Can we set the property via constructor?
