@@ -1,5 +1,4 @@
 ﻿using System;
-using Typesafe.Merge;
 using Typesafe.With;
 
 namespace Typesafe.Sandbox
@@ -59,27 +58,11 @@ namespace Typesafe.Sandbox
             }
             
             {
-                
                 var harry = new Student("Harry Potter", House.Gryffindor);
                 var malfoy = harry
                     .With(p => p.Name, name => name.Length == 1 ? name : "Snape")
                     .With(p => p.House, House.Slytherin);
                 Console.WriteLine(malfoy.Name);
-            }
-            
-            {
-                var person1 = new Person("Søren", 10) {LastName = "Ost"};
-                var person2 = new Person("Lasse", 11);
-                var person3 = new NoCtor();
-            
-                var mergedPerson = person1.Merge(person2);
-                Console.WriteLine(mergedPerson);
-            
-                var mergedPerson2 = person1.Merge<UnrelatedType, Person, Person>(person2);
-                Console.WriteLine(mergedPerson2);
-                
-                var unsafeMerged = person1.Merge<UnrelatedType, Person, NoCtor>(person3);
-                Console.WriteLine(unsafeMerged);
             }
             
             var person = new Person("Søren", 10);

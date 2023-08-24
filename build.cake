@@ -1,6 +1,6 @@
 var target = Argument("target", "Default");
 
-var solutionFile = "./src/Typed.sln";
+var solutionFile = "./src/Typesafe.With.sln";
 
 Task("Build")
   .Does(() =>
@@ -38,7 +38,6 @@ Task("Pack")
   .Does(() =>
 {
   Pack("Typesafe.With", new [] { "netstandard2.0" });
-  Pack("Typesafe.Merge", new [] { "netstandard2.0" });
 })
 ;
 
