@@ -22,16 +22,20 @@ namespace Typesafe.With
                 {propertyName, new DependentValue(propertyValueFactory)}
             };
 
-            Validate<T>(propertyName);
+            Validate<T>(propertyName, instance);
             
-            var constructor = TypeUtils.GetSuitableConstructor<T>();
+            var constructor = TypeUtils.GetSuitableConstructor<T>(instance);
             var builder = new UnifiedWithBuilder<T>(constructor);
             
             return builder.Construct(instance, properties);
         }
-        
-        public static T With<T, TProperty>(this T instance, Expression<Func<T, TProperty>> propertyPicker, TProperty propertyValue)
+
+        public static T With<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            TProperty propertyValue)
         {
+            var x = instance.GetType();
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
@@ -41,18 +45,18 @@ namespace Typesafe.With
                 {propertyName, propertyValue}
             };
 
-            Validate<T>(propertyName);
+            Validate<T>(propertyName, instance);
             
-            var constructor = TypeUtils.GetSuitableConstructor<T>();
+            var constructor = TypeUtils.GetSuitableConstructor<T>(instance);
             var builder = new UnifiedWithBuilder<T>(constructor);
             
             return builder.Construct(instance, properties);
         }
 
-        private static void Validate<T>(string propertyName)
+        private static void Validate<T>(string propertyName, T instance)
         {
             // Can we set the property via constructor?
-            var hasConstructorParameter = HasConstructorParameter<T>(propertyName);
+            var hasConstructorParameter = HasConstructorParameter<T>(propertyName, instance);
             
             if (hasConstructorParameter) return;
             
@@ -72,9 +76,9 @@ namespace Typesafe.With
             return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
         }
 
-        private static bool HasConstructorParameter<T>(string propertyName)
+        private static bool HasConstructorParameter<T>(string propertyName, T instance)
         {
-            var constructorParameters = TypeUtils.GetSuitableConstructor<T>().GetParameters();
+            var constructorParameters = TypeUtils.GetSuitableConstructor<T>(instance).GetParameters();
             
             // Can we find a matching constructor parameter?
             var hasConstructorParameter = constructorParameters

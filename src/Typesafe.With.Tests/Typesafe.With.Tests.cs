@@ -655,6 +655,49 @@ namespace Typesafe.With.Tests
                 public T Value { get; set; }
             }
 
+            private interface IPerson
+            {
+                string Name { get; set; }
+            }
+
+            private interface IStudent : IPerson
+            {
+                int Age { get; set; }
+            }
+            
+            private class Person : IStudent
+            {
+                public string Name { get; set; }
+                public int Age { get; set; }
+            }
+            
+            [Theory, AutoData]
+            private void With_works_on_interfaces(Person person, string newName)
+            {
+                // Arrange + Act
+                Func<IPerson> act = () => (person as IPerson).With(p => p.Name, newName);
+
+                // Assert
+                act.Should().NotThrow(because: "With works on an interface");
+                
+                var personName = act()?.Name;
+                personName.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+            }
+            
+            [Theory, AutoData]
+            private void With_works_on_interfaces_in_a_hierarchy(Person person, string newName)
+            {
+                // Arrange + Act
+                Func<IStudent> act = () => (person as IStudent).With(p => p.Name, newName);
+
+                // Assert
+                act.Should().NotThrow(because: "With works on an interface");
+                
+                var personName = act();
+                person.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+                person.Age.Should().Be(person.Age, because: "that value has not changed");
+            }
+            
             [Theory]
             [MemberData(nameof(With_works_with_any_type_Data))]
             public void With_works_with_any_type<T>(T sourceValue, T withValue, T expectedValue)

@@ -3,6 +3,22 @@ using Typesafe.With;
 
 namespace Typesafe.Sandbox
 {
+    interface IPerson
+    {
+        string Name { get; set; }
+    }
+
+    interface IStudent : IPerson
+    {
+        House House { get; set; }
+    }
+
+    class HogwartsStudents : IStudent
+    {
+        public string Name { get; set; }
+        public House House { get; set; }
+    }
+    
     class Person
     {
         public string Name { get; }
@@ -47,6 +63,11 @@ namespace Typesafe.Sandbox
     {
         static void Main(string[] args)
         {
+            {
+                IStudent harry = new HogwartsStudents { Name = "Harry", House = House.Gryffindor }; 
+                IStudent draco = harry.With(p => p.Name, "Draco");
+                Console.WriteLine(draco); // Prints "Draco"
+            }
             {
                 var harry = new Student("Harry Potter", House.Gryffindor);
                 var malfoy = harry
