@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using Typesafe.With.Sequence;
 
@@ -22,18 +21,39 @@ namespace Typesafe.With.Lazy
       _properties = properties ?? throw new ArgumentNullException(nameof(properties));
     }
 
-    public LazyInstancedWithSequence<T> With<TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty propertyValue)
+    /// <summary>
+    /// Adds the mutation to the sequence.
+    /// </summary>
+    /// <param name="propertyPicker">An expression representing the property to update.</param>
+    /// <param name="propertyValue">The value to set the property to.</param>
+    /// <typeparam name="TProperty">The type of the property.</typeparam>
+    /// <returns>The sequence.</returns>
+    /// <exception cref="ArgumentNullException">If <paramref name="propertyPicker"/> is null.</exception>
+    public LazyInstancedWithSequence<T> With<TProperty>(
+      Expression<Func<T, TProperty>> propertyPicker,
+      TProperty propertyValue
+    )
     {
       if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
       
       var propertyName = propertyPicker.GetPropertyName();
-      
       var dictionary = new Dictionary<string, object>(_properties).AddOrUpdate(propertyName, propertyValue);
       
       return new LazyInstancedWithSequence<T>(_instance, dictionary);
     }
-    
-    public LazyInstancedWithSequence<T> With<TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty> propertyValueFactory)
+
+    /// <summary>
+    /// Adds the mutation to the sequence.
+    /// </summary>
+    /// <param name="propertyPicker">An expression representing the property to update.</param>
+    /// <param name="propertyValueFactory">A function taking in the current value and returning the new value.</param>
+    /// <typeparam name="TProperty">The type of the property.</typeparam>
+    /// <returns>The sequence.</returns>
+    /// <exception cref="ArgumentNullException">If either parameter is null.</exception>
+    public LazyInstancedWithSequence<T> With<TProperty>(
+      Expression<Func<T, TProperty>> propertyPicker,
+      Func<TProperty> propertyValueFactory
+    )
     {
       if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
       if (propertyValueFactory == null) throw new ArgumentNullException(nameof(propertyValueFactory));
@@ -45,20 +65,22 @@ namespace Typesafe.With.Lazy
       return new LazyInstancedWithSequence<T>(_instance, dictionary);
     }
 
+    /// <summary>
+    /// Applies the sequence to produce an updated instance of <typeparamref name="T"/>.
+    /// </summary>
+    /// <returns>An instance of <typeparamref name="T"/> with the sequence applied.</returns>
     private T Apply()
     {
-      var resolvedProperties = ResolveLazyPropertyValues(_properties);
+      var resolvedProperties = ResolveLazyPropertyValues();
       var sequence = new WithSequence<T>(resolvedProperties);
       var appliedInstance = sequence.ApplyTo(_instance);
 
       return appliedInstance;
     }
 
-    private static Dictionary<string, object> ResolveLazyPropertyValues(Dictionary<string, object> dictionary)
+    private Dictionary<string, object> ResolveLazyPropertyValues()
     {
-      return dictionary
-        .Select(pair => new KeyValuePair<string, object>(pair.Key, PropertyValueResolver.Resolve(pair.Value)))
-        .ToDictionary(pair => pair.Key, pair => pair.Value);
+      return _properties.UpdateValues(PropertyValueResolver.Resolve);
     }
 
     public static implicit operator T(LazyInstancedWithSequence<T> builder) => builder.Apply();

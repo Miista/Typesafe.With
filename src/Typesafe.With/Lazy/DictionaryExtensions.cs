@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Typesafe.With.Lazy
 {
@@ -24,6 +25,19 @@ namespace Typesafe.With.Lazy
             }
 
             return self;
+        }
+
+        internal static Dictionary<TKey, TNewValue> UpdateValues<TKey, TValue, TNewValue>(
+            this Dictionary<TKey, TValue> self,
+            Func<TValue, TNewValue> mapping
+        )
+        {
+            return self
+                .Select(pair => new KeyValuePair<TKey, TNewValue>(
+                        key: pair.Key,
+                        value: mapping(pair.Value)
+                    )
+                ).ToDictionary(pair => pair.Key, pair => pair.Value);
         }
     }
 }
