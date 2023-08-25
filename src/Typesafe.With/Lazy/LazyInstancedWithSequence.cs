@@ -10,7 +10,7 @@ namespace Typesafe.With.Lazy
     private readonly Dictionary<string, object> _properties;
     private readonly T _instance;
 
-    public LazyInstancedWithSequence(T instance)
+    internal LazyInstancedWithSequence(T instance)
       : this(instance, new Dictionary<string, object>())
     {
     }
