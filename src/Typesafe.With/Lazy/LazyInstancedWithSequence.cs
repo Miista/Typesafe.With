@@ -69,7 +69,7 @@ namespace Typesafe.With.Lazy
     /// Applies the sequence to produce an updated instance of <typeparamref name="T"/>.
     /// </summary>
     /// <returns>An instance of <typeparamref name="T"/> with the sequence applied.</returns>
-    private T Apply()
+    public T Apply()
     {
       var resolvedProperties = ResolveLazyPropertyValues();
       var sequence = new WithSequence<T>(resolvedProperties);

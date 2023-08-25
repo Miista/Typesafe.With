@@ -105,47 +105,51 @@ Console.WriteLine(malfoy.House); // Prints "Gryffindor"
 If you need to update many objects at the same time, you can create a sequence of mutations to be applied.
 
 ```csharp
-public class Person
+var students = new[]
 {
-    public string Name { get; }
-    
-    public Person(string name) => (Name) = (name);
-}
-
-var sequence = WithSequence.New<Person>()
-                    .With(p => p.Name, "Harry")
-                    .ToSequence();
-
-var persons = new List<Person>
-{
-    new Person("Malfoy", 0),
-    new Person("Hermione", 0)
+    new Student("Harry Potter", House.Slytherin),
+    new Student("Ron Weasley", House.Slytherin),
+    new Student("Hermione Granger", House.Slytherin)
 };
-var updatedPersons = persons.Select(sequence.ApplyTo);
 
-foreach (var person in updatedPersons)
-{
-    Console.WriteLine(person.Name); // Prints "Harry"
-}
+var sequence =
+    WithSequence
+        .New<Student>()
+        .With<House>(_ => _.House, House.Gryffindor)
+        .ToSequence();
+
+var updatedStudents = students
+                        .Select(sequence.ApplyTo) // Apply the sequence
+                        .ToArray();
+
+Console.WriteLine(updatedStudents[0].House); // Prints: Gryffindor
+Console.WriteLine(updatedStudents[1].House); // Prints: Gryffindor
+Console.WriteLine(updatedStudents[2].House); // Prints: Gryffindor
 ```
 
 ### Lazy Evaluation
 In cases where object construction is expensive, you can make the calls to `With` be lazily evaluated.
 
 ```csharp
-using Lazy;
+using Typesafe.With.Lazy;
 
-public class Person
+enum House { Gryffindor, Slytherin }
+
+class Student
 {
     public string Name { get; }
-    
-    public Person(string name) => (Name) = (name);
+    public House House { get; }
+
+    public Student(string name, House house) => (Name, House) = (name, house);
 }
 
-var harry = new Person("Harry Potter");
-var hermione = harry.With(p => p.Name, "Hermione Granger");
+var harry = new Student("Harry Potter", House.Gryffindor);
+var hermione = harry
+    .With(_ => _.Name, "Hermione")
+    .With(_ => _.House, House.Slytherin);
 
-Console.WriteLine(hermione.Name); // Prints "Hermione Granger"
+Console.WriteLine(hermione); // Prints: Typesafe.With.Lazy.LazyInstancedWithSequence`1[Typesafe.Sandbox.Student]
+Console.WriteLine(hermione.Apply().Name); // Prints: Hermione - Slytherin
 ```
 
 ## How it works

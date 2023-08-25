@@ -1,34 +1,10 @@
 ﻿using System;
-using Typesafe.With;
+using System.Linq;
+using Typesafe.With.Sequence;
+using Typesafe.With.Lazy;
 
 namespace Typesafe.Sandbox
 {
-    class Person
-    {
-        public string Name { get; }
-        public int Age { get; }
-        public string LastName { get; set; }
-
-        public Person(string name, int age)
-        {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
-            Age = age;
-        }
-
-        public override string ToString() => $"Name={Name}; Age={Age}; LastName={LastName}; HashCode={GetHashCode()};";
-    }
-
-    class NoCtor
-    {
-        public string Name { get; set; }
-
-        public override string ToString() => $"Name={Name};";
-    }
-
-    class UnrelatedType
-    {
-    }
-    
     class Student
     {
         public string Name { get; }
@@ -37,11 +13,7 @@ namespace Typesafe.Sandbox
         public Student(string name, House house) => (Name, House) = (name, house);
     }
 
-    enum House
-    {
-        Gryffindor,
-        Slytherin
-    }
+    enum House { Gryffindor, Slytherin }
     
     class Program
     {
@@ -49,47 +21,32 @@ namespace Typesafe.Sandbox
         {
             {
                 var harry = new Student("Harry Potter", House.Gryffindor);
-                var malfoy = harry
-                    .With(p => p.Name, "Malfoy")
-                    .With(p => p.House, house => house == House.Slytherin ? House.Gryffindor : house);
 
-                Console.WriteLine(malfoy.Name); // Prints "Malfoy"
-                Console.WriteLine(malfoy.House); // Prints "Gryffindor"
+                var hermione = harry
+                    .With(_ => _.Name, "Hermione")
+                    .With(_ => _.House, House.Slytherin);
+
+                Console.WriteLine(hermione); // Prints: Typesafe.With.Lazy.LazyInstancedWithSequence`1[Typesafe.Sandbox.Student]
+                Console.WriteLine(hermione.Apply().Name); // Prints: Hermione - Slytherin
             }
-            
             {
-                var harry = new Student("Harry Potter", House.Gryffindor);
-                var malfoy = harry
-                    .With(p => p.Name, name => name.Length == 1 ? name : "Snape")
-                    .With(p => p.House, House.Slytherin);
-                Console.WriteLine(malfoy.Name);
+                var sequence = WithSequence
+                    .New<Student>().With<House>(_ => _.House, House.Gryffindor)
+                    .ToSequence();
+
+                var students = new[]
+                {
+                    new Student("Harry Potter", House.Slytherin),
+                    new Student("Ron Weasley", House.Slytherin),
+                    new Student("Hermione Granger", House.Slytherin)
+                };
+
+                var updatedStudents = students.Select(sequence.ApplyTo).ToArray();
+
+                Console.WriteLine(updatedStudents[0].House); // Prints: Gryffindor
+                Console.WriteLine(updatedStudents[1].House); // Prints: Gryffindor
+                Console.WriteLine(updatedStudents[2].House); // Prints: Gryffindor
             }
-            
-            var person = new Person("Søren", 10);
-            Console.WriteLine(person);
-            
-            var lasse = person
-                .With(p => p.Name, "Lasse");
-            Console.WriteLine(lasse);
-            
-            var youngerSoren = person.With(p => p.Age, 5);
-            Console.WriteLine(youngerSoren);
-            
-            var withLastName = person
-                .With(p => p.Name, "Test")
-                .With(p => p.LastName, "Guldmund")
-                .With(p => p.Age, 5);
-            Console.WriteLine(withLastName);
-            
-            var sorenAgain = person
-                .With(p => p.Name, "Søren");
-            Console.WriteLine(sorenAgain);
-            
-            var noCtor = new NoCtor {Name = "Søren"};
-            Console.WriteLine(noCtor);
-            
-            var noCtor1 = noCtor.With(p => p.Name, "Test");
-            Console.WriteLine(noCtor1);
         }
     }
 }
