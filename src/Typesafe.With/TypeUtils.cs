@@ -24,11 +24,23 @@ namespace Typesafe.With
         /// <typeparam name="T">The type to return the <see cref="ConstructorInfo"/> for.</typeparam>
         /// <returns>A <see cref="ConstructorInfo"/> suitable for constructing an instance of <typeparamref name="T"/>.</returns>
         /// <exception cref="InvalidOperationException">There are no suitable constructors.</exception>
-        public static ConstructorInfo GetSuitableConstructor<T>() =>
-            typeof(T)
-                .GetConstructors()
-                .OrderByDescending(info => info.GetParameters().Length)
-                .FirstOrDefault()
-            ?? throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
+        public static ConstructorInfo GetSuitableConstructor<T>()
+        {
+            var constructor = typeof(T)
+                       .GetConstructors()
+                       .OrderByDescending(info => info.GetParameters().Length)
+                       .FirstOrDefault();
+
+            if (constructor != null) return constructor;
+            
+            // At this point, constructor is null, meaning we found not even the default constructor.
+            
+            // If T is a struct, we cannot support
+            if (typeof(T).IsValueType)
+                throw new InvalidOperationException($"Structs without constructor are not supported");
+            
+            // Otherwise, we are looking at a possibly private constructor
+            throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
+        }
     }
 }

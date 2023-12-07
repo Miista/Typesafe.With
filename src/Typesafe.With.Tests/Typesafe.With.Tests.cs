@@ -48,6 +48,24 @@ namespace Typesafe.With.Tests
                         .WithMessage($"*{nameof(TypeWithConstructorTakingNonPropertyParameter)}*", because: "the exception message should contain the type name")
                     ;
             }
+            
+            private struct SourceWithoutConstructor
+            {
+                public string Id { get; set; }
+            }
+
+            [Theory, AutoData]
+            public void Calling_With_on_a_struct_with_only_property_setters_is_not_supported(string sourceId)
+            {
+                // Arrange
+                var source = new SourceWithoutConstructor { Id = sourceId };
+                
+                // Act
+                Action act = () => source.With(_ => _.Id, sourceId);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the struct does not have a constructor");
+            }
         }
         
         public class Expressions
@@ -682,15 +700,15 @@ namespace Typesafe.With.Tests
 
                     // Act
                     var result = source
-                        //.With(_ => _.Id, withId)
-                        //.With(_ => _.Name, withName)
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
                         .With(_ => _.Age, withAge);
 
                     // Assert
                     result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
                     result.Age.Should().Be(expectedAge);
-                    //result.Id.Should().Be(expectedId);
-                    //result.Name.Should().Be(expectedName);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
                 }
                 
                 private struct SourceWithConstructor
@@ -730,8 +748,17 @@ namespace Typesafe.With.Tests
                     public string Id { get; set; }
                     public string Name { get; set; }
                     public int? Age { get; set; }
+
+                    // The constructor is required
+                    // ReSharper disable once UnusedMember.Local
+                    public SourceWithSetters(string id, string name, int? age)
+                    {
+                        Id = id;
+                        Name = name;
+                        Age = age;
+                    }
                 }
-                
+
                 [Theory]
                 [ClassData(typeof(TestData))]
                 public void Can_call_With_on_type_with_only_property_setters(
