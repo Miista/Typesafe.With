@@ -16,7 +16,7 @@ namespace Typesafe.With
 
         public T Construct(T instance, IDictionary<string, object> properties)
         {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            //if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (properties == null) throw new ArgumentNullException(nameof(properties));
 
             // 1. Construct instance of T (and set properties via constructor)
@@ -131,9 +131,60 @@ namespace Typesafe.With
                 var value = property.Value is DependentValue dependentValue
                     ? dependentValue.Resolve(existingProperty)
                     : property.Value;
-                
-                existingProperty.SetValue(instance, value);
-                remainingProperties.Remove(property.Key);
+
+                if (typeof(TInstance).IsValueType)
+                {
+                    object boxed = instance;
+                    existingProperty.SetValue(boxed, value);
+                    remainingProperties.Remove(property.Key);
+                    instance = (TInstance)boxed;
+                }
+                else
+                {
+                    existingProperty.SetValue(instance, value);
+                    remainingProperties.Remove(property.Key);
+                }
+            }
+
+            return (instance, remainingProperties);
+        }
+        
+        private static (TInstance Instance, IDictionary<string, object> RemainingProperties) EnrichByProperty1<TInstance>(
+            TInstance instance,
+            IDictionary<string, object> propertiesToSet)
+        where TInstance : struct
+        {
+            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary<TInstance>();
+            var remainingProperties = new Dictionary<string, object>(propertiesToSet);
+
+            foreach (var property in propertiesToSet)
+            {
+                if (!existingProperties.TryGetValue(property.Key, out var existingProperty))
+                {
+                    throw new InvalidOperationException($"Error enriching instance of type '{typeof(TInstance)}': Cannot find property with name '{property.Key}'.");
+                }
+
+                if (!existingProperty.CanWrite)
+                {
+                    throw new InvalidOperationException($"Error enriching instance of type '{typeof(TInstance)}': Property '{property.Key}' cannot be written to. You can fix this by making the property settable.");
+                }
+
+                var value = property.Value is DependentValue dependentValue
+                    ? dependentValue.Resolve(existingProperty)
+                    : property.Value;
+
+                if (typeof(TInstance).IsValueType)
+                {
+                    object boxed = instance;
+                    existingProperty.SetValue(boxed, value);
+                    remainingProperties.Remove(property.Key);
+                    instance = (TInstance)boxed;
+                }
+                else
+                {
+                    existingProperty.SetValue(instance, value);
+                    remainingProperties.Remove(property.Key);
+                }
             }
 
             return (instance, remainingProperties);

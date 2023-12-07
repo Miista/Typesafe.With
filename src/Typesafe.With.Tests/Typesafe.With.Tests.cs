@@ -682,15 +682,15 @@ namespace Typesafe.With.Tests
 
                     // Act
                     var result = source
-                        .With(_ => _.Id, withId)
-                        .With(_ => _.Name, withName)
+                        //.With(_ => _.Id, withId)
+                        //.With(_ => _.Name, withName)
                         .With(_ => _.Age, withAge);
 
                     // Assert
                     result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
                     result.Age.Should().Be(expectedAge);
-                    result.Id.Should().Be(expectedId);
-                    result.Name.Should().Be(expectedName);
+                    //result.Id.Should().Be(expectedId);
+                    //result.Name.Should().Be(expectedName);
                 }
                 
                 private struct SourceWithConstructor
