@@ -152,6 +152,32 @@ Console.WriteLine(hermione); // Prints: Typesafe.With.Lazy.LazyInstancedWithSequ
 Console.WriteLine(hermione.Apply().Name); // Prints: Hermione - Slytherin
 ```
 
+Sometimes using the `Typesafe.With.Lazy` namespace is not an option.
+In such cases, you can call `AsLazy` to evaluate the following calls to `With` lazily.
+
+```csharp
+using Typesafe.With; // <-- Notice we are now using the regular Typesafe.With namespace
+
+enum House { Gryffindor, Slytherin }
+
+class Student
+{
+    public string Name { get; }
+    public House House { get; }
+
+    public Student(string name, House house) => (Name, House) = (name, house);
+}
+
+var harry = new Student("Harry Potter", House.Gryffindor);
+var hermione = harry
+    .AsLazy() // <-- This enables the lazy evaluation
+    .With(_ => _.Name, "Hermione")
+    .With(_ => _.House, House.Slytherin);
+
+Console.WriteLine(hermione); // Prints: Typesafe.With.Lazy.LazyInstancedWithSequence`1[Typesafe.Sandbox.Student]
+Console.WriteLine(hermione.Apply().Name); // Prints: Hermione - Slytherin
+```
+
 ## How it works
 The resulting type `T` is constructed via the following steps:
 
