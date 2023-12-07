@@ -638,23 +638,248 @@ namespace Typesafe.With.Tests
 
         public class General
         {
-            internal class TypeCreatesNewInstance
+            public class Structs
             {
-                public string Id { get; }
+                internal struct StructCreatesNewInstance
+                {
+                    public string Id { get; set; }
 
-                public TypeCreatesNewInstance(string id) => Id = id;
+                    public StructCreatesNewInstance(string id) => Id = id;
+                }
+
+                [Theory, AutoData]
+                internal void Calling_With_creates_a_new_instance(StructCreatesNewInstance source, string newValue)
+                {
+                    // Act
+                    var result = source.With(s => s.Id, newValue);
+
+                    // Assert
+                    result.GetHashCode().Should().NotBe(source.GetHashCode());
+                }
+                
+                private struct SourceWithMixedConstructorAndSetters
+                {
+                    public string Id { get; }
+                    public string Name { get; }
+                    public int? Age { get; set; }
+
+                    public SourceWithMixedConstructorAndSetters(string id, string name)
+                    {
+                        Age = null;
+                        (Id, Name) = (id, name);
+                    }
+                }
+
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_both_property_setter_and_constructor(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithMixedConstructorAndSetters(sourceId, sourceName) {Age = sourceAge};
+
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
+                
+                private struct SourceWithConstructor
+                {
+                    public string Id { get; }
+                    public string Name { get; }
+                    public int? Age { get; }
+
+                    public SourceWithConstructor(string id, string name, int? age) => (Id, Name, Age) = (id, name, age);
+                }
+
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_only_constructor(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithConstructor(sourceId, sourceName, sourceAge);
+
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithConstructor>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
+                
+                private struct SourceWithSetters
+                {
+                    public string Id { get; set; }
+                    public string Name { get; set; }
+                    public int? Age { get; set; }
+                }
+                
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_only_property_setters(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithSetters
+                    {
+                        Id = sourceId,
+                        Name = sourceName,
+                        Age = sourceAge
+                    };
+                
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithSetters>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
             }
-            
-            [Theory, AutoData]
-            internal void Calling_With_creates_a_new_instance(TypeCreatesNewInstance source, string newValue)
+
+            public class ReferenceTypes
             {
-                // Act
-                var result = source.With(s => s.Id, newValue);
+                internal class TypeCreatesNewInstance
+                {
+                    public string Id { get; }
 
-                // Assert
-                result.GetHashCode().Should().NotBe(source.GetHashCode());
+                    public TypeCreatesNewInstance(string id) => Id = id;
+                }
+
+                [Theory, AutoData]
+                internal void Calling_With_creates_a_new_instance(TypeCreatesNewInstance source, string newValue)
+                {
+                    // Act
+                    var result = source.With(s => s.Id, newValue);
+
+                    // Assert
+                    result.GetHashCode().Should().NotBe(source.GetHashCode());
+                }
+                
+                private class SourceWithMixedConstructorAndSetters
+                {
+                    public string Id { get; }
+                    public string Name { get; }
+                    public int? Age { get; set; }
+
+                    public SourceWithMixedConstructorAndSetters(string id, string name) => (Id, Name) = (id, name);
+                }
+
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_both_property_setter_and_constructor(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithMixedConstructorAndSetters(sourceId, sourceName) {Age = sourceAge};
+
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
+                
+                private class SourceWithConstructor
+                {
+                    public string Id { get; }
+                    public string Name { get; }
+                    public int? Age { get; }
+
+                    public SourceWithConstructor(string id, string name, int? age) => (Id, Name, Age) = (id, name, age);
+                }
+
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_only_constructor(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithConstructor(sourceId, sourceName, sourceAge);
+
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithConstructor>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
+                
+                private class SourceWithSetters
+                {
+                    public string Id { get; set; }
+                    public string Name { get; set; }
+                    public int? Age { get; set; }
+                }
+                
+                [Theory]
+                [ClassData(typeof(TestData))]
+                public void Can_call_With_on_type_with_only_property_setters(
+                    string sourceId, string sourceName, int? sourceAge,
+                    string withId, string withName, int? withAge,
+                    string expectedId, string expectedName, int? expectedAge)
+                {
+                    // Arrange
+                    var source = new SourceWithSetters
+                    {
+                        Id = sourceId,
+                        Name = sourceName,
+                        Age = sourceAge
+                    };
+                
+                    // Act
+                    var result = source
+                        .With(_ => _.Id, withId)
+                        .With(_ => _.Name, withName)
+                        .With(_ => _.Age, withAge);
+
+                    // Assert
+                    result.Should().BeOfType<SourceWithSetters>();
+                    result.Age.Should().Be(expectedAge);
+                    result.Id.Should().Be(expectedId);
+                    result.Name.Should().Be(expectedName);
+                }
             }
-            
+
             private class Container<T>
             {
                 public T Value { get; set; }
@@ -694,106 +919,6 @@ namespace Typesafe.With.Tests
                     yield return new object[] {'a', 'b', 'b'};
                     yield return new object[] {(byte) 0, (byte) 1, (byte) 1};
                 }
-            }
-
-            private class SourceWithSetters
-            {
-                public string Id { get; set; }
-                public string Name { get; set; }
-                public int? Age { get; set; }
-            }
-
-            [Theory]
-            [ClassData(typeof(TestData))]
-            public void Can_call_With_on_type_with_only_property_setters(
-                string sourceId, string sourceName, int? sourceAge,
-                string withId, string withName, int? withAge,
-                string expectedId, string expectedName, int? expectedAge)
-            {
-                // Arrange
-                var source = new SourceWithSetters
-                {
-                    Id = sourceId,
-                    Name = sourceName,
-                    Age = sourceAge
-                };
-                
-                // Act
-                var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
-
-                // Assert
-                result.Should().BeOfType<SourceWithSetters>();
-                result.Age.Should().Be(expectedAge);
-                result.Id.Should().Be(expectedId);
-                result.Name.Should().Be(expectedName);
-            }
-
-            private class SourceWithConstructor
-            {
-                public string Id { get; }
-                public string Name { get; }
-                public int? Age { get; }
-
-                public SourceWithConstructor(string id, string name, int? age) => (Id, Name, Age) = (id, name, age);
-            }
-            
-            [Theory]
-            [ClassData(typeof(TestData))]
-            public void Can_call_With_on_type_with_only_constructor(
-                string sourceId, string sourceName, int? sourceAge,
-                string withId, string withName, int? withAge,
-                string expectedId, string expectedName, int? expectedAge)
-            {
-                // Arrange
-                var source = new SourceWithConstructor(sourceId, sourceName, sourceAge);
-
-                // Act
-                var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
-
-                // Assert
-                result.Should().BeOfType<SourceWithConstructor>();
-                result.Age.Should().Be(expectedAge);
-                result.Id.Should().Be(expectedId);
-                result.Name.Should().Be(expectedName);
-            }
-
-            private class SourceWithMixedConstructorAndSetters
-            {
-                public string Id { get; }
-                public string Name { get; }
-                public int? Age { get; set; }
-
-                public SourceWithMixedConstructorAndSetters(string id, string name) => (Id, Name) = (id, name);
-            }
-
-            [Theory]
-            [ClassData(typeof(TestData))]
-            public void Can_call_With_on_type_with_both_property_setter_and_constructor(
-                string sourceId, string sourceName, int? sourceAge,
-                string withId, string withName, int? withAge,
-                string expectedId, string expectedName, int? expectedAge)
-            {
-                // Arrange
-                var source = new SourceWithMixedConstructorAndSetters(sourceId, sourceName) {Age = sourceAge};
-
-                // Act
-                var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
-
-                // Assert
-                result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
-                result.Age.Should().Be(expectedAge);
-                result.Id.Should().Be(expectedId);
-                result.Name.Should().Be(expectedName);
-                
             }
 
             private class TestData : IEnumerable<object[]>
