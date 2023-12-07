@@ -111,7 +111,7 @@ namespace Typesafe.With.Lazy.Tests
       
       [Theory, AutoData]
       internal void Does_not_evaluate_lazy_sequence(TypeWithProperties instance)
-            {
+      {
         // Act
         Action act = () => instance.With(i => i.String, () => throw new Exception());
 

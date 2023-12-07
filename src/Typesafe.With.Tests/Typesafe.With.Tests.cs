@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
+using Typesafe.With.Lazy;
 using Xunit;
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 // ReSharper disable UnusedParameter.Local
@@ -23,6 +24,26 @@ namespace Typesafe.With.Tests
 {
     public class Tests
     {
+        public class Lazy
+        {
+            internal class LazyEntryType
+            {
+                public string Id { get; }
+
+                public LazyEntryType(string id) => Id = id;
+            }
+
+            [Theory, AutoData]
+            internal void Test(LazyEntryType source, string newValue)
+            {
+                // Act
+                var result = source.AsLazy().With(s => s.Id, newValue);
+
+                // Assert
+                result.Should().BeOfType<LazyInstancedWithSequence<LazyEntryType>>();
+            }
+        }
+        
         public class Errors
         {
             internal class TypeWithConstructorTakingNonPropertyParameter
@@ -55,7 +76,7 @@ namespace Typesafe.With.Tests
             }
 
             [Theory, AutoData]
-            public void Calling_With_on_a_struct_with_only_property_setters_is_not_supported(string sourceId)
+            public void Throws_exception_if_struct_does_not_have_any_constructor(string sourceId)
             {
                 // Arrange
                 var source = new SourceWithoutConstructor { Id = sourceId };
@@ -65,29 +86,6 @@ namespace Typesafe.With.Tests
 
                 // Assert
                 act.Should().Throw<InvalidOperationException>(because: "the struct does not have a constructor");
-            }
-        }
-        
-        public class Expressions
-        {
-            internal class TypeWithNestedProperty
-            {
-                internal class NestedType
-                {
-                    public string Text { get; set; }
-                }
-
-                public NestedType Nested { get; set; }
-            }
-            
-            [Theory, AutoData]
-            internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
-            {
-                // Act
-                Action act = () => instance.With(_ => _.Nested.Text, newValue);
-
-                // Assert
-                act.Should().Throw<Exception>(because: "the expression represents a nested property");
             }
             
             internal class TypeWithPrivateConstructor
@@ -124,6 +122,29 @@ namespace Typesafe.With.Tests
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the type does not have a public constructor");
+            }
+        }
+        
+        public class Expressions
+        {
+            internal class TypeWithNestedProperty
+            {
+                internal class NestedType
+                {
+                    public string Text { get; set; }
+                }
+
+                public NestedType Nested { get; set; }
+            }
+            
+            [Theory, AutoData]
+            internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                Action act = () => instance.With(_ => _.Nested.Text, newValue);
+
+                // Assert
+                act.Should().Throw<Exception>(because: "the expression represents a nested property");
             }
         }
         

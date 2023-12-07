@@ -7,6 +7,17 @@ namespace Typesafe.With
 {
     public static class ObjectExtensions
     {
+        
+        public static Lazy.LazyInstancedWithSequence<T> AsLazy<T>(
+            this T instance
+        )
+            where T : class
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+
+            return new Lazy.LazyInstancedWithSequence<T>(instance);
+        }
+        
         /// <summary>
         /// Sets the value of the property select
         /// </summary>
