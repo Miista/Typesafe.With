@@ -33,7 +33,7 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, properties);
+            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;
@@ -45,7 +45,7 @@ namespace Typesafe.With
             ConstructorInfo constructorInfo,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary<TInstance>();
+            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
 
             var remainingProperties = new Dictionary<string, object>(newProperties.ToDictionary(pair => pair.Key, pair => pair.Value));
             var parameters = new List<object>();
@@ -107,7 +107,7 @@ namespace Typesafe.With
             IReadOnlyDictionary<string, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary<TInstance>();
+            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
             var remainingProperties = new Dictionary<string, object>(newProperties.ToDictionary(pair => pair.Key, pair => pair.Value));
 
             foreach (var property in newProperties)
@@ -135,9 +135,11 @@ namespace Typesafe.With
 
         private static IEnumerable<PropertyInfo> GetCopyProperties(
             ConstructorInfo constructorInfo,
-            IReadOnlyDictionary<string, object> excludeProperties)
+            IReadOnlyDictionary<string, object> excludeProperties,
+            T instance
+        )
         {
-            var publicProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary<T>();
+            var publicProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))

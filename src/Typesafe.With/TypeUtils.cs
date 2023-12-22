@@ -7,8 +7,8 @@ namespace Typesafe.With
 {
     internal static class TypeUtils
     {
-        public static Dictionary<string, PropertyInfo> GetPropertyDictionary<T>() =>
-            typeof(T)
+        public static Dictionary<string, PropertyInfo> GetPropertyDictionary<T>(T instance) =>
+            GetCorrectedType(instance)
                 .GetProperties()
                 .ToDictionary(info => info.Name.ToParameterCase());
 

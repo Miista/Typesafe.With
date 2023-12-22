@@ -672,30 +672,40 @@ namespace Typesafe.With.Tests
             }
             
             [Theory, AutoData]
-            private void With_works_on_interfaces(Person person, string newName)
+            private void With_works_on_interfaces(Person concretePerson, string newName)
             {
                 // Arrange + Act
-                Func<IPerson> act = () => (person as IPerson).With(p => p.Name, newName);
+                IPerson person = concretePerson;
+                Func<IPerson> act = () => person.With(p => p.Name, newName);
 
                 // Assert
                 act.Should().NotThrow(because: "With works on an interface");
-                
-                var personName = act()?.Name;
-                personName.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+
+                var updatedPerson = act();
+                updatedPerson.Should().BeAssignableTo<IPerson>(because: "the type should not have changed");
+                updatedPerson.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
             }
-            
-            [Theory, AutoData]
-            private void With_works_on_interfaces_in_a_hierarchy(Person person, string newName)
+
+            [Theory]
+            [InlineAutoData("Harry")]
+            [InlineAutoData("Harry", 2)]
+            private void With_works_on_interfaces_in_a_hierarchy(string newName, int newAge, Person person)
             {
                 // Arrange + Act
-                Func<IStudent> act = () => (person as IStudent).With(p => p.Name, newName);
+                IStudent student = person;
+                Func<IStudent> act = () => student
+                    .With(p => p.Name, newName)
+                    .With(p => p.Age, newAge);
 
                 // Assert
                 act.Should().NotThrow(because: "With works on an interface");
                 
-                var personName = act();
-                person.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
-                person.Age.Should().Be(person.Age, because: "that value has not changed");
+                var updatedPerson = act();
+                updatedPerson.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+                updatedPerson.Age.Should().Be(newAge, because: "that is the value given via With");
+
+                person.Name.Should().NotBeEquivalentTo(newName, because: "that value has not changed");
+                person.Age.Should().NotBe(newAge, because: "that value has not changed");
             }
             
             [Theory]
