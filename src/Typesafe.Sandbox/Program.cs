@@ -17,6 +17,8 @@ namespace Typesafe.Sandbox
     {
         public string Name { get; set; }
         public House House { get; set; }
+
+        public override string ToString() => $"Name={Name};House={House}";
     }
     
     class Person

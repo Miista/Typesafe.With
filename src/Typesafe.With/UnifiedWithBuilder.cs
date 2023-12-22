@@ -62,7 +62,7 @@ namespace Typesafe.With
             IDictionary<string, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = TypeUtils.GetPropertyDictionary<TInstance>();
+            var existingProperties = TypeUtils.GetPropertyDictionary(instance);
             var resolvedConstructorParameters = new List<object>();
             var constructorParameters = constructorInfo.GetParameters();
             
