@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using AutoFixture.Xunit2;
 using FluentAssertions;
 using Xunit;
@@ -30,6 +31,72 @@ namespace Typesafe.With.Tests
                 }
             }
 
+            public class PropertyValueFactory
+            {
+                [Theory, AutoData]
+                internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
+                {
+                    // Arrange + Act
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, expression);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the instance is null");
+                }
+            
+                [Theory, AutoData]
+                internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With<TypeWithConstructorTakingNonPropertyParameter, string>(null, expression);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
+                }
+            
+                [Theory, AutoData]
+                internal void Throws_exception_if_propertyValueFactory_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With(_ => _.SettableProperty, (Expression<Func<string, string>>) null);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the property value factory parameter is null");
+                }
+            }
+            
+            public class PropertyValue
+            {
+                [Theory, AutoData]
+                internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
+                {
+                    // Arrange + Act
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, newValue);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the instance is null");
+                }
+            
+                [Theory, AutoData]
+                internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With(null, newValue);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
+                }
+            
+                [Theory, AutoData]
+                internal void Does_not_throw_exception_if_propertyValue_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With(_ => _.SettableProperty, (string) null);
+                
+                    // Assert
+                    act.Should().NotThrow<ArgumentNullException>(because: "the new value is allowed to be null");
+                }
+            }
+
             [Theory, AutoData]
             internal void Throws_exception_if_constructor_has_parameter_for_which_there_is_no_property(TypeWithConstructorTakingNonPropertyParameter instance)
             {
@@ -41,6 +108,28 @@ namespace Typesafe.With.Tests
                         .Throw<Exception>()
                         .WithMessage("*randomNonInstanceValue*", because: "the exception message should contain the constructor parameter")
                         .WithMessage($"*{nameof(TypeWithConstructorTakingNonPropertyParameter)}*", because: "the exception message should contain the type name")
+                    ;
+            }
+
+            internal class TypeWithNonSettableProperty
+            {
+                public string SettableProperty { get; set; }
+                public int NonSettableProperty { get; }
+
+                public TypeWithNonSettableProperty(string settableProperty) => (SettableProperty) = (settableProperty);
+            }
+            
+            [Theory, AutoData]
+            internal void Throws_exception_if_there_is_no_way_to_set_the_remaining_properties(TypeWithNonSettableProperty instance)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(_ => _.NonSettableProperty, 2);
+
+                // Assert
+                act.Should()
+                    .Throw<Exception>()
+                    .WithMessage("*NonSettableProperty*", because: "the exception message should contain the property in question")
+                    .WithMessage($"*{nameof(TypeWithNonSettableProperty)}*", because: "the exception message should contain the type name")
                     ;
             }
         }
@@ -101,6 +190,40 @@ namespace Typesafe.With.Tests
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the type does not have a public constructor");
+            }
+            
+            internal class TypeWithNonNullableProperty
+            {
+                public int NullableProperty { get; set; }
+            }
+            
+            [Theory, AutoData]
+            internal void Supports_casting_the_property_in_the_expression(TypeWithNonNullableProperty instance, int newValue)
+            {
+                // Arrange + Act
+                Func<TypeWithNonNullableProperty> act = () => instance.With(_ => (int?) _.NullableProperty, newValue);
+
+                // Assert
+                act.Should().NotThrow(because: "this is no exceptional case");
+                
+                var result = act();
+                result.Should().NotBeNull();
+                result.NullableProperty.Should().Be(newValue, because: "that is the value passed to the With method");
+            }
+
+            internal class TypeWithMethod
+            {
+                public int Nothing() => default;
+            }
+            
+            [Theory, AutoData]
+            internal void Throws_exception_if_the_expression_does_not_represent_a_property(TypeWithMethod instance, int newValue)
+            {
+                // Arrange + Act
+                Func<TypeWithMethod> act = () => instance.With(_ => _.Nothing(), newValue);
+
+                // Assert
+                act.Should().Throw<Exception>(because: "the expression does not represent a property");
             }
         }
         
