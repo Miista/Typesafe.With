@@ -1,5 +1,7 @@
 # Typesafe.With
 
+[![Build status](https://dev.azure.com/palmund/Typesafe.With/_apis/build/status/Typesafe.With)](https://dev.azure.com/palmund/Typesafe.With/_build/latest?definitionId=9)
+
 Providing with-functionality to any type on the .NET platform.
 
 ## What and Why?
