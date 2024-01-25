@@ -1,6 +1,8 @@
 # Typesafe.With
 
 [![Build status](https://dev.azure.com/palmund/Typesafe.With/_apis/build/status/Typesafe.With)](https://dev.azure.com/palmund/Typesafe.With/_build/latest?definitionId=9)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![NuGet version](https://badge.fury.io/nu/Typesafe.With.svg)](https://www.nuget.org/packages/Poser)
 
 Providing with-functionality to any type on the .NET platform.
 
