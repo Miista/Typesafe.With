@@ -213,7 +213,7 @@ namespace Typesafe.With.Tests
 
             internal class TypeWithMethod
             {
-                public int Nothing() => default;
+                public int Nothing() => default(int);
             }
             
             [Theory, AutoData]
