@@ -85,17 +85,19 @@ namespace Typesafe.With
             
             (PropertyInfo ExistingProperty, string PropertyName) TryFindExistingProperty(ParameterInfo parameterInfo)
             {
-                // Can we find a matching constructor parameter?
+                // Can we find a matching property?
                 if (existingProperties.TryGetValue(parameterInfo.Name, out var existingPropertyByExactMatch))
                 {
                     return (existingPropertyByExactMatch, parameterInfo.Name);
                 }
 
-                // Can we find a matching constructor parameter if we lowercase both parameter and property name?
+                // Can we find a matching property if we lowercase both the constructor parameter and property name?
                 var existingPropertyKey =
                     existingProperties.Keys.FirstOrDefault(key => string.Equals(key, parameterInfo.Name, StringComparison.InvariantCultureIgnoreCase))
                     ?? throw new InvalidOperationException(
-                        $"Error creating instance of type '{typeof(TInstance)}': Cannot find property for constructor parameter '{parameterInfo.Name}'. This is usually a sign that the constructor contains logic."
+                        $"Error creating instance of type '{typeof(TInstance)}': Cannot find property for constructor parameter '{parameterInfo.Name}'. "
+                        + "This could be a sign that the constructor contains logic. "
+                        + "Ensure that the constructor parameter has a corresponding property."
                     );
 
                 var existingPropertyByLowercaseMatch = existingProperties[existingPropertyKey];
