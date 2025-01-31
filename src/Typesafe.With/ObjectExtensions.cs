@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Typesafe.Sandbox")]
 
 namespace Typesafe.With
 {
@@ -17,6 +20,7 @@ namespace Typesafe.With
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
             var propertyName = propertyPicker.GetPropertyName();
+            
             var properties = new Dictionary<string, object>
             {
                 {propertyName, new DependentValue(propertyValueFactory)}
