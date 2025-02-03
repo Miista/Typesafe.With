@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Typesafe.With\Typesafe.With.csproj" />
+    <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />
   </ItemGroup>
 
 </Project>

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
+using Mono.Reflection;
 using Typesafe.With;
 
 namespace Typesafe.Sandbox
@@ -72,6 +74,22 @@ namespace Typesafe.Sandbox
         public object Value { get; }
         public Stack<MemberInfo> Path { get; }
 
+        public bool IsFactory
+        {
+            get
+            {
+                var type = Value.GetType();
+                
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Func<,>))
+                {
+                    var genericArguments = type.GetGenericArguments();
+                    return genericArguments[0] == Property.PropertyType && genericArguments[1] == Property.PropertyType;
+                }
+
+                return false;
+            }
+        }
+        
         public bool IsNested => Path?.Count > 0;
         public MemberInfo Member => IsNested ? Path.Peek() : null;
 
@@ -94,6 +112,9 @@ namespace Typesafe.Sandbox
     {
         public static Wither<T> With1<T, TProperty>(this T instance, Expression<Func<T, TProperty>> propertyPicker, TProperty value) =>
             new Wither<T>(instance).With1(propertyPicker, value);
+        
+        public static Wither<T> With1<T, TProperty>(this T instance, Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory) =>
+            new Wither<T>(instance).With1(propertyPicker, valueFactory);
     }
 
     public class Wither<T>
@@ -111,6 +132,12 @@ namespace Typesafe.Sandbox
             _replacements.Add(Program.PropertyPicker(propertyPicker, value));
             return this;
         }
+        
+        public Wither<T> With1<TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory)
+        {
+            _replacements.Add(Program.PropertyPicker(propertyPicker, valueFactory));
+            return this;
+        }
 
         public T Build()
         {
@@ -120,77 +147,8 @@ namespace Typesafe.Sandbox
         public static implicit operator T(Wither<T> wither) => wither.Build();
     }
 
-    class Program
+    class ExpressionTreeWithBuilder
     {
-        // static (Expression<Func<T, TProperty>> Expression, TProperty Value) PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value) => (propertyPicker, value);
-
-        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
-        {
-            var body = propertyPicker.Body;
-            
-            if (body is not MemberExpression { Member: PropertyInfo property })
-                throw new InvalidOperationException("Expression must be a property expression");
-
-            if (body.NodeType == ExpressionType.MemberAccess)
-            {
-                var stack = new Stack<MemberInfo>();
-                MemberExpression x = (body as MemberExpression).Expression as MemberExpression;
-                while (x?.NodeType == ExpressionType.MemberAccess)
-                {
-                    stack.Push(x.Member);
-                    x = x.Expression as MemberExpression;
-                }
-                // Nested property?
-                // if (body is MemberExpression { Expression: MemberExpression { Member: PropertyInfo nestedProperty } })
-                // {
-                    return new Replacement(property, value, stack);
-                // }
-            }
-            return new Replacement(property, value, null);
-        }
-
-        private static Func<T, T> With<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
-        {
-            if (propertyPicker.Body is not MemberExpression { Member: PropertyInfo property })
-                throw new InvalidOperationException("Expression must be a property expression");
-            
-            var body = new Stack<Expression>();
-            var instanceType = typeof(T);
-
-            // Parameters
-            var incomingInstance = Expression.Parameter(instanceType);
-            
-            // Variables
-            var instanceVariable = Expression.Variable(instanceType);
-            
-            var ctor = TypeUtils.GetSuitableConstructor<T>();
-
-            // Instantiate the object
-            body.Push(Expression.Assign(instanceVariable, Expression.New(ctor)));
-
-            var properties = instanceType.GetProperties();
-            foreach (var propertyInfo in properties)
-            {
-                Expression propertyValue = propertyInfo == property
-                    ? Expression.Constant(value)
-                    : Expression.Property(incomingInstance, propertyInfo);
-
-                // Assign property
-                body.Push(Expression.Assign(Expression.Property(instanceVariable, propertyInfo), propertyValue));
-            }
-
-            // Load the new instance on the stack
-            body.Push(instanceVariable);
-
-            var expression = Expression.Lambda<Func<T, T>>(
-                body: Expression.Block(new[] { instanceVariable }, body.Reverse()),
-                parameters: incomingInstance
-            );
-
-            // Compile the expression tree
-            return expression.Compile();
-        }
-        
         public static Func<T, T> With<T>(params Replacement[] replacements)
         {
             var instanceType = typeof(T);
@@ -274,7 +232,6 @@ namespace Typesafe.Sandbox
                 }
                 else
                 {
-
                     Expression newValue = dict.TryGetValue(propertyInfo, out var replacement)
                         ? Expression.Constant(replacement.Value)
                         : Expression.Property(incomingInstance, propertyInfo);
@@ -282,6 +239,276 @@ namespace Typesafe.Sandbox
                     // Assign property
                     body.Push(Expression.Assign(propertyExpression, newValue));
                 }
+            }
+
+            // Load the new instance on the stack
+            body.Push(instanceVariable);
+
+            var lambda = Expression.Lambda<Func<T, T>>(
+                body: Expression.Block(new[] { instanceVariable }, body.Reverse()),
+                parameters: incomingInstance
+            );
+
+            // Compile the expression tree
+            return lambda.Compile();
+        }
+    }
+    
+    class Program
+    {
+        // static (Expression<Func<T, TProperty>> Expression, TProperty Value) PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value) => (propertyPicker, value);
+
+        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+        {
+            var body = propertyPicker.Body;
+            
+            if (body is not MemberExpression { Member: PropertyInfo property })
+                throw new InvalidOperationException("Expression must be a property expression");
+
+            if (body.NodeType == ExpressionType.MemberAccess)
+            {
+                var stack = new Stack<MemberInfo>();
+                var memberExpression = (body as MemberExpression).Expression as MemberExpression;
+                while (memberExpression?.NodeType == ExpressionType.MemberAccess)
+                {
+                    stack.Push(memberExpression.Member);
+                    memberExpression = memberExpression.Expression as MemberExpression;
+                }
+                // Nested property?
+                // if (body is MemberExpression { Expression: MemberExpression { Member: PropertyInfo nestedProperty } })
+                // {
+                    return new Replacement(property, value, stack);
+                // }
+            }
+            
+            return new Replacement(property, value, null);
+        }
+        
+        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory)
+        {
+            var body = propertyPicker.Body;
+            
+            if (body is not MemberExpression { Member: PropertyInfo property })
+                throw new InvalidOperationException("Expression must be a property expression");
+
+            if (body.NodeType == ExpressionType.MemberAccess)
+            {
+                var stack = new Stack<MemberInfo>();
+                var memberExpression = (body as MemberExpression).Expression as MemberExpression;
+                while (memberExpression?.NodeType == ExpressionType.MemberAccess)
+                {
+                    stack.Push(memberExpression.Member);
+                    memberExpression = memberExpression.Expression as MemberExpression;
+                }
+                // Nested property?
+                // if (body is MemberExpression { Expression: MemberExpression { Member: PropertyInfo nestedProperty } })
+                // {
+                    return new Replacement(property, valueFactory, stack);
+                // }
+            }
+            
+            return new Replacement(property, valueFactory, null);
+        }
+
+        private static Func<T, T> With<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+        {
+            if (propertyPicker.Body is not MemberExpression { Member: PropertyInfo property })
+                throw new InvalidOperationException("Expression must be a property expression");
+            
+            var body = new Stack<Expression>();
+            var instanceType = typeof(T);
+
+            // Parameters
+            var incomingInstance = Expression.Parameter(instanceType);
+            
+            // Variables
+            var instanceVariable = Expression.Variable(instanceType);
+            
+            var ctor = TypeUtils.GetSuitableConstructor<T>();
+
+            // Instantiate the object
+            body.Push(Expression.Assign(instanceVariable, Expression.New(ctor)));
+
+            var properties = instanceType.GetProperties();
+            foreach (var propertyInfo in properties)
+            {
+                Expression propertyValue = propertyInfo == property
+                    ? Expression.Constant(value)
+                    : Expression.Property(incomingInstance, propertyInfo);
+
+                // Assign property
+                body.Push(Expression.Assign(Expression.Property(instanceVariable, propertyInfo), propertyValue));
+            }
+
+            // Load the new instance on the stack
+            body.Push(instanceVariable);
+
+            var expression = Expression.Lambda<Func<T, T>>(
+                body: Expression.Block(new[] { instanceVariable }, body.Reverse()),
+                parameters: incomingInstance
+            );
+
+            // Compile the expression tree
+            return expression.Compile();
+        }
+
+        private static Dictionary<ParameterInfo, PropertyInfo> CreateParameterInfoMap(ConstructorInfo constructor)
+        {
+            var map = new Dictionary<ParameterInfo, PropertyInfo>();
+
+            var declaringType = constructor.DeclaringType ?? throw new Exception($"Method {constructor.Name} does not have a {nameof(ConstructorInfo.DeclaringType)}");
+            
+            var properties = declaringType
+                .GetProperties()
+                .Where(p => p.CanWrite)
+                .ToDictionary(p => p.SetMethod);
+
+            var parameterInfos = constructor.GetParameters();
+            var instructions = constructor.GetInstructions();
+
+            foreach (var instruction in instructions)
+            {
+                if (instruction.OpCode == OpCodes.Ldarg_0 || instruction.OpCode == OpCodes.Nop)
+                {
+                    continue;
+                }
+
+                if (instruction.OpCode.Name.StartsWith("ldarg"))
+                {
+                    int index = instruction.OpCode.Name switch
+                    {
+                        "ldarg.1" => 0,
+                        "ldarg.2" => 1,
+                        "ldarg.3" => 2,
+                        "ldarg.s" => Array.IndexOf(parameterInfos, parameterInfos.Single(p => p == (ParameterInfo)instruction.Operand))
+                    };
+                    
+                    var param = parameterInfos[index];
+                    
+                    if (instruction.Next?.OpCode == OpCodes.Call)
+                    {
+                        // Is this a property setter?
+                        var callInstruction = instruction.Next;
+                        if (callInstruction.Operand is MethodInfo methodInfo)
+                        {
+                            if (properties.TryGetValue(methodInfo, out var property))
+                            {
+                                map.Add(param, property);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return map;
+        }
+        
+        public static Func<T, T> With<T>(params Replacement[] replacements)
+        {
+            var instanceType = typeof(T);
+            
+            // Parameters
+            var incomingInstance = Expression.Parameter(instanceType);
+            
+            // Variables
+            var instanceVariable = Expression.Variable(instanceType);
+
+            if (replacements.Length == 0)
+            {
+                return Expression.Lambda<Func<T, T>>(
+                        body: Expression.Block(
+                            new[] { instanceVariable },
+                            Expression.Assign(instanceVariable, incomingInstance)
+                        ),
+                        parameters: incomingInstance
+                    )
+                    .Compile();
+            }
+
+            var body = new Stack<Expression>();
+            var nestedReplacementsByMember = replacements
+                .Where(r => r.IsNested)
+                .ToLookup(r => r.Member);
+                
+            var replacementsByProperty = replacements
+                .GroupBy(r => r.Property)
+                // If there are more than one, we just need the most recent
+                .Select(g => g.Last())
+                .ToDictionary(g => g.Property);
+
+            
+            var ctor = TypeUtils.GetSuitableConstructor<T>();
+
+            var parameterInfoMap = CreateParameterInfoMap(ctor);
+            var array = ctor.GetParameters()
+                .Select(p => parameterInfoMap[p])
+                .Select<PropertyInfo, Expression>(p =>
+                {
+                    if (replacementsByProperty.TryGetValue(p, out var replacement))
+                    {
+                        if (replacement.IsFactory)throw new Exception($"Cannot use factory for constructor parameter '{p.Name}'");
+                        
+                        return Expression.Constant(replacement.Value);
+                    }
+                    
+                    return Expression.Property(incomingInstance, p);
+                })
+                .ToArray();
+
+            // Instantiate the object
+            body.Push(Expression.Assign(instanceVariable, Expression.New(ctor, array)));
+
+            var properties = instanceType.GetProperties().Where(p => p.CanWrite);
+            foreach (var propertyInfo in properties)
+            {
+                var propertyExpression = Expression.Property(instanceVariable, propertyInfo);
+                
+                var nestedReplacements = nestedReplacementsByMember[propertyInfo].ToArray();
+
+                if (nestedReplacements.Any())
+                {
+                    var liftedReplacements = nestedReplacements
+                        .Select(r => r.Lift())
+                        .ToArray();
+                    var method = typeof(Program)
+                        .GetMethod(nameof(With))
+                        .MakeGenericMethod(propertyInfo.PropertyType);
+                    var methodCallExpression = Expression.Call(null, method, arguments: new []{ Expression.Constant(liftedReplacements) });
+
+                    var funcT2T = Expression.Invoke(Expression.Lambda(methodCallExpression));
+                    var propertyWithWitherApplied = Expression.Invoke(funcT2T, propertyExpression);
+                    var assignPropertyToInstance = Expression.Lambda(propertyWithWitherApplied, instanceVariable);
+                    body.Push(Expression.Assign(propertyExpression, Expression.Invoke(assignPropertyToInstance, incomingInstance)));
+
+                    continue;
+                }
+
+                var foundValue = replacementsByProperty.TryGetValue(propertyInfo, out var replacement);
+
+                Expression newValue;
+
+                if (!foundValue)
+                {
+                    newValue = Expression.Property(incomingInstance, propertyInfo);
+                }
+                else
+                {
+                    if (replacement.IsFactory)
+                    {
+                        var func = replacement.Value as Delegate;
+                        newValue = Expression.Invoke(Expression.Constant(func), Expression.Property(incomingInstance, propertyInfo));
+                    }
+                    else
+                    {
+                        newValue = Expression.Constant(replacement.Value);
+                    }
+                }
+                // Expression newValue = foundValue
+                //     ? Expression.Constant(replacement.Value)
+                //     : Expression.Property(incomingInstance, propertyInfo);
+
+                // Assign property
+                body.Push(Expression.Assign(propertyExpression, newValue));
             }
 
             // Load the new instance on the stack
@@ -314,17 +541,77 @@ namespace Typesafe.Sandbox
             public Child Child { get; set; }
         }
 
+        class WithCtor
+        {
+            public string Name { get; private set; }
+            public int Age { get; set; }
+            public bool IsAdult => Age >= 18;
+
+            // Many properties
+            public string LastName { get; set; }
+            public string Address { get; set; }
+            public string City { get; set; }
+            public string Country { get; set; }
+            public string PostalCode { get; set; }
+            public string PhoneNumber { get; set; }
+            public string Email { get; set; }
+            public string Fax { get; set; }
+            public string Website { get; set; }
+            public string Company { get; set; }
+            public string Title { get; set; }
+            public string Department { get; set; }
+
+            public WithCtor(string name, string lastName, string address, string city, string country, string postalCode, string phoneNumber, string email, string fax, string website,
+                string company,
+                string title,
+                string department
+            )
+            {
+                Name = name;
+                LastName = lastName;
+                Address = address;
+                City = city;
+                Country = country;
+                PostalCode = postalCode;
+                PhoneNumber = phoneNumber;
+                Email = email;
+                Fax = fax;
+                Website = website;
+                Company = company;
+                Title = title;
+                Department = department;
+            }
+        }
+
         static void Main(string[] args)
         {
             {
-                var parent = new Parent() { Child = new Child() { Name = "Søren", Friend = new Friend() { Name = "Lotte" } } };
+                // var parent = new Parent() { Name = "Hans", Child = new Child() { Name = "Søren", Friend = new Friend() { Name = "Lotte" } } };
+                //
+                // Parent wither = parent
+                //         // .With1(p => p.Child.Friend.Name, "Lasse")
+                //         .With1(p => p.Name, name => $"{name}2")
+                //         // .With1(p => p.Child.Friend.Age, 2)
+                //         // .With1(p => p.Child.Name, "Lotte")
+                //     ;
 
-                Parent wither = parent
-                        .With1(p => p.Name, "Hans")
-                        .With1(p => p.Child.Friend.Name, "Lasse")
-                        .With1(p => p.Child.Friend.Age, 2)
-                        .With1(p => p.Child.Name, "Lotte")
-                    ;
+                var withCtor = new WithCtor(
+                    "Søren",
+                    "Guldmund",
+                    "Testvej 1",
+                    "Testby",
+                    "Testland",
+                    "1234",
+                    "12345678",
+                    "e@e.dk",
+                    "12345678",
+                    "www.test.dk",
+                    "TestCompany",
+                    "TestTitle",
+                    "TestDepartment"
+                );
+
+                WithCtor wither1 = withCtor.With1(c => c.Name, "Lasse");
 
                 var func1 = With<Parent>(
                     PropertyPicker<Parent, string>(p => p.Child.Friend.Name, "Lasse"),
@@ -333,7 +620,7 @@ namespace Typesafe.Sandbox
                     PropertyPicker<Parent, string>(p => p.Child.Name, "Lotte")
                 );
 
-                var parent1 = func1(parent);
+                // var parent1 = func1(parent);
 
                 // Using expression trees
                 var student = new HogwartsStudents { Name = "Harry", House = House.Gryffindor };
