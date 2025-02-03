@@ -89,12 +89,42 @@ namespace Typesafe.Sandbox
             return new Replacement(Property, Value, Path);
         }
     }
-    
+
+    public static class Ext
+    {
+        public static Wither<T> With1<T, TProperty>(this T instance, Expression<Func<T, TProperty>> propertyPicker, TProperty value) =>
+            new Wither<T>(instance).With1(propertyPicker, value);
+    }
+
+    public class Wither<T>
+    {
+        private readonly T _instance;
+        private readonly List<Replacement> _replacements = new();
+
+        public Wither(T instance)
+        {
+            _instance = instance;
+        }
+
+        public Wither<T> With1<TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+        {
+            _replacements.Add(Program.PropertyPicker(propertyPicker, value));
+            return this;
+        }
+
+        public T Build()
+        {
+            return Program.With<T>(_replacements.ToArray())(_instance);
+        }
+        
+        public static implicit operator T(Wither<T> wither) => wither.Build();
+    }
+
     class Program
     {
         // static (Expression<Func<T, TProperty>> Expression, TProperty Value) PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value) => (propertyPicker, value);
-        
-        static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+
+        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
         {
             var body = propertyPicker.Body;
             
@@ -119,7 +149,7 @@ namespace Typesafe.Sandbox
             return new Replacement(property, value, null);
         }
 
-        static Func<T, T> With<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+        private static Func<T, T> With<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
         {
             if (propertyPicker.Body is not MemberExpression { Member: PropertyInfo property })
                 throw new InvalidOperationException("Expression must be a property expression");
@@ -280,17 +310,27 @@ namespace Typesafe.Sandbox
         
         class Parent
         {
+            public string Name { get; set; }
             public Child Child { get; set; }
         }
-        
+
         static void Main(string[] args)
         {
             {
                 var parent = new Parent() { Child = new Child() { Name = "Søren", Friend = new Friend() { Name = "Lotte" } } };
 
+                Parent wither = parent
+                        .With1(p => p.Name, "Hans")
+                        .With1(p => p.Child.Friend.Name, "Lasse")
+                        .With1(p => p.Child.Friend.Age, 2)
+                        .With1(p => p.Child.Name, "Lotte")
+                    ;
+
                 var func1 = With<Parent>(
                     PropertyPicker<Parent, string>(p => p.Child.Friend.Name, "Lasse"),
-                    PropertyPicker<Parent, int>(p => p.Child.Friend.Age, 2)
+                    PropertyPicker<Parent, int>(p => p.Child.Friend.Age, 2),
+                    PropertyPicker<Parent, string>(p => p.Name, "Hans"),
+                    PropertyPicker<Parent, string>(p => p.Child.Name, "Lotte")
                 );
 
                 var parent1 = func1(parent);
