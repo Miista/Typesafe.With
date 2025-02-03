@@ -129,13 +129,13 @@ namespace Typesafe.Sandbox
 
         public Wither<T> With1<TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
         {
-            _replacements.Add(Program.PropertyPicker(propertyPicker, value));
+            _replacements.Add(ReplacementHelper.Create(propertyPicker, value));
             return this;
         }
         
         public Wither<T> With1<TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory)
         {
-            _replacements.Add(Program.PropertyPicker(propertyPicker, valueFactory));
+            _replacements.Add(ReplacementHelper.Create(propertyPicker, valueFactory));
             return this;
         }
 
@@ -253,63 +253,46 @@ namespace Typesafe.Sandbox
             return lambda.Compile();
         }
     }
+
+    internal static class ReplacementHelper
+    {
+        public static Replacement Create<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
+        {
+            return Create(propertyPicker, (object)value);
+        }
+        
+        public static Replacement Create<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory)
+        {
+            return Create(propertyPicker, (object)valueFactory);
+        }
+
+        private static Replacement Create<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, object valueOrValueFactory)
+        {
+            var body = propertyPicker.Body;
+            
+            if (body is not MemberExpression { Member: PropertyInfo property } expression)
+                throw new InvalidOperationException("Expression must be a property expression");
+
+            // Nested property?
+            if (expression.NodeType == ExpressionType.MemberAccess)
+            {
+                var stack = new Stack<MemberInfo>();
+                var memberExpression = expression.Expression as MemberExpression;
+                while (memberExpression?.NodeType == ExpressionType.MemberAccess)
+                {
+                    stack.Push(memberExpression.Member);
+                    memberExpression = memberExpression.Expression as MemberExpression;
+                }
+                
+                return new Replacement(property, valueOrValueFactory, stack);
+            }
+            
+            return new Replacement(property, valueOrValueFactory, null);
+        }
+    }
     
     class Program
     {
-        // static (Expression<Func<T, TProperty>> Expression, TProperty Value) PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value) => (propertyPicker, value);
-
-        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
-        {
-            var body = propertyPicker.Body;
-            
-            if (body is not MemberExpression { Member: PropertyInfo property })
-                throw new InvalidOperationException("Expression must be a property expression");
-
-            if (body.NodeType == ExpressionType.MemberAccess)
-            {
-                var stack = new Stack<MemberInfo>();
-                var memberExpression = (body as MemberExpression).Expression as MemberExpression;
-                while (memberExpression?.NodeType == ExpressionType.MemberAccess)
-                {
-                    stack.Push(memberExpression.Member);
-                    memberExpression = memberExpression.Expression as MemberExpression;
-                }
-                // Nested property?
-                // if (body is MemberExpression { Expression: MemberExpression { Member: PropertyInfo nestedProperty } })
-                // {
-                    return new Replacement(property, value, stack);
-                // }
-            }
-            
-            return new Replacement(property, value, null);
-        }
-        
-        public static Replacement PropertyPicker<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, Func<TProperty, TProperty> valueFactory)
-        {
-            var body = propertyPicker.Body;
-            
-            if (body is not MemberExpression { Member: PropertyInfo property })
-                throw new InvalidOperationException("Expression must be a property expression");
-
-            if (body.NodeType == ExpressionType.MemberAccess)
-            {
-                var stack = new Stack<MemberInfo>();
-                var memberExpression = (body as MemberExpression).Expression as MemberExpression;
-                while (memberExpression?.NodeType == ExpressionType.MemberAccess)
-                {
-                    stack.Push(memberExpression.Member);
-                    memberExpression = memberExpression.Expression as MemberExpression;
-                }
-                // Nested property?
-                // if (body is MemberExpression { Expression: MemberExpression { Member: PropertyInfo nestedProperty } })
-                // {
-                    return new Replacement(property, valueFactory, stack);
-                // }
-            }
-            
-            return new Replacement(property, valueFactory, null);
-        }
-
         private static Func<T, T> With<T, TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty value)
         {
             if (propertyPicker.Body is not MemberExpression { Member: PropertyInfo property })
@@ -444,21 +427,32 @@ namespace Typesafe.Sandbox
                 .Select(p => parameterInfoMap[p])
                 .Select<PropertyInfo, Expression>(p =>
                 {
-                    if (replacementsByProperty.TryGetValue(p, out var replacement))
-                    {
-                        if (replacement.IsFactory)throw new Exception($"Cannot use factory for constructor parameter '{p.Name}'");
-                        
-                        return Expression.Constant(replacement.Value);
-                    }
-                    
-                    return Expression.Property(incomingInstance, p);
+                    return GetReplacementExpression(p);
+
+                    // var foundValue = replacementsByProperty.TryGetValue(p, out var replacement);
+                    //
+                    // if (!foundValue)
+                    // {
+                    //     return Expression.Property(incomingInstance, p);
+                    // }
+                    //
+                    // if (replacement.IsFactory)
+                    // {
+                    //     var func = replacement.Value as Delegate;
+                    //     return Expression.Invoke(Expression.Constant(func), Expression.Property(incomingInstance, p));
+                    // }
+                    //
+                    // return Expression.Constant(replacement.Value);
                 })
                 .ToArray();
 
             // Instantiate the object
             body.Push(Expression.Assign(instanceVariable, Expression.New(ctor, array)));
 
-            var properties = instanceType.GetProperties().Where(p => p.CanWrite);
+            var properties = instanceType
+                .GetProperties()
+                .Where(p => p.CanWrite)
+                .Except(parameterInfoMap.Values);
             foreach (var propertyInfo in properties)
             {
                 var propertyExpression = Expression.Property(instanceVariable, propertyInfo);
@@ -483,26 +477,29 @@ namespace Typesafe.Sandbox
                     continue;
                 }
 
-                var foundValue = replacementsByProperty.TryGetValue(propertyInfo, out var replacement);
-
-                Expression newValue;
-
-                if (!foundValue)
-                {
-                    newValue = Expression.Property(incomingInstance, propertyInfo);
-                }
-                else
-                {
-                    if (replacement.IsFactory)
-                    {
-                        var func = replacement.Value as Delegate;
-                        newValue = Expression.Invoke(Expression.Constant(func), Expression.Property(incomingInstance, propertyInfo));
-                    }
-                    else
-                    {
-                        newValue = Expression.Constant(replacement.Value);
-                    }
-                }
+                // var foundValue = replacementsByProperty.TryGetValue(propertyInfo, out var replacement);
+                //
+                // Expression newValue;
+                //
+                // if (!foundValue)
+                // {
+                //     newValue = Expression.Property(incomingInstance, propertyInfo);
+                // }
+                // else
+                // {
+                //     if (replacement.IsFactory)
+                //     {
+                //         var func = replacement.Value as Delegate;
+                //         newValue = Expression.Invoke(Expression.Constant(func), Expression.Property(incomingInstance, propertyInfo));
+                //     }
+                //     else
+                //     {
+                //         newValue = Expression.Constant(replacement.Value);
+                //     }
+                // }
+                
+                var newValue = GetReplacementExpression(propertyInfo);
+                
                 // Expression newValue = foundValue
                 //     ? Expression.Constant(replacement.Value)
                 //     : Expression.Property(incomingInstance, propertyInfo);
@@ -521,6 +518,26 @@ namespace Typesafe.Sandbox
 
             // Compile the expression tree
             return lambda.Compile();
+
+            Expression GetReplacementExpression(PropertyInfo propertyInfo)
+            {
+                var foundValue = replacementsByProperty.TryGetValue(propertyInfo, out var replacement);
+
+                Expression newValue;
+
+                if (!foundValue)
+                {
+                    return Expression.Property(incomingInstance, propertyInfo);
+                }
+
+                if (replacement.IsFactory)
+                {
+                    var func = replacement.Value as Delegate;
+                    return Expression.Invoke(Expression.Constant(func), Expression.Property(incomingInstance, propertyInfo));
+                }
+
+                return Expression.Constant(replacement.Value);
+            }
         }
 
         class Friend
@@ -561,7 +578,17 @@ namespace Typesafe.Sandbox
             public string Title { get; set; }
             public string Department { get; set; }
 
-            public WithCtor(string name, string lastName, string address, string city, string country, string postalCode, string phoneNumber, string email, string fax, string website,
+            public WithCtor(
+                string name,
+                string lastName,
+                string address,
+                string city,
+                string country,
+                string postalCode,
+                string phoneNumber,
+                string email,
+                string fax,
+                string website,
                 string company,
                 string title,
                 string department
@@ -586,14 +613,14 @@ namespace Typesafe.Sandbox
         static void Main(string[] args)
         {
             {
-                // var parent = new Parent() { Name = "Hans", Child = new Child() { Name = "Søren", Friend = new Friend() { Name = "Lotte" } } };
-                //
-                // Parent wither = parent
-                //         // .With1(p => p.Child.Friend.Name, "Lasse")
-                //         .With1(p => p.Name, name => $"{name}2")
-                //         // .With1(p => p.Child.Friend.Age, 2)
-                //         // .With1(p => p.Child.Name, "Lotte")
-                //     ;
+                var parent = new Parent() { Name = "Hans", Child = new Child() { Name = "Søren", Friend = new Friend() { Name = "Lotte" } } };
+                
+                Parent wither = parent
+                        // .With1(p => p.Child.Friend.Name, "Lasse")
+                        .With1(p => p.Name, name => $"{name}2")
+                        // .With1(p => p.Child.Friend.Age, 2)
+                        // .With1(p => p.Child.Name, "Lotte")
+                ;
 
                 var withCtor = new WithCtor(
                     "Søren",
@@ -611,16 +638,19 @@ namespace Typesafe.Sandbox
                     "TestDepartment"
                 );
 
-                WithCtor wither1 = withCtor.With1(c => c.Name, "Lasse");
+                WithCtor wither1 = withCtor
+                        .With1(c => c.Name, name => $"{name}Lasse")
+                        .With1(p => p.Age, 20)
+                    ;
 
                 var func1 = With<Parent>(
-                    PropertyPicker<Parent, string>(p => p.Child.Friend.Name, "Lasse"),
-                    PropertyPicker<Parent, int>(p => p.Child.Friend.Age, 2),
-                    PropertyPicker<Parent, string>(p => p.Name, "Hans"),
-                    PropertyPicker<Parent, string>(p => p.Child.Name, "Lotte")
+                    ReplacementHelper.Create((Expression<Func<Parent, string>>)(p => p.Child.Friend.Name), "Lasse"),
+                    ReplacementHelper.Create((Expression<Func<Parent, int>>)(p => p.Child.Friend.Age), 2),
+                    ReplacementHelper.Create((Expression<Func<Parent, string>>)(p => p.Name), "Hans"),
+                    ReplacementHelper.Create((Expression<Func<Parent, string>>)(p => p.Child.Name), "Lotte")
                 );
 
-                // var parent1 = func1(parent);
+                var parent1 = func1(parent);
 
                 // Using expression trees
                 var student = new HogwartsStudents { Name = "Harry", House = House.Gryffindor };
@@ -631,13 +661,13 @@ namespace Typesafe.Sandbox
                 var with1 = With<HogwartsStudents>();
                 var students1 = with1(student);
                 var func = With<HogwartsStudents>(
-                    PropertyPicker<HogwartsStudents, string>(s => s.Name, "Draco"),
-                    PropertyPicker<HogwartsStudents, House>(s => s.House, House.Slytherin),
-                    PropertyPicker<HogwartsStudents, string>(s => s.Name, "Harry")
+                    ReplacementHelper.Create((Expression<Func<HogwartsStudents, string>>)(s => s.Name), "Draco"),
+                    ReplacementHelper.Create((Expression<Func<HogwartsStudents, House>>)(s => s.House), House.Slytherin),
+                    ReplacementHelper.Create((Expression<Func<HogwartsStudents, string>>)(s => s.Name), "Harry")
                 );
                 var hogwartsStudents1 = func(student);
 
-                var propertyPicker = PropertyPicker<HogwartsStudents, string>(s => s.Name, "Snape");
+                var propertyPicker = ReplacementHelper.Create((Expression<Func<HogwartsStudents, string>>)(s => s.Name), "Snape");
                 var member = propertyPicker.Property;
                 var body = new Stack<Expression>();
                 
