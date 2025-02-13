@@ -18,15 +18,15 @@ namespace Typesafe.With
                 .OrderByDescending(info => info.GetParameters().Length)
                 .FirstOrDefault()
             ?? throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
-        
-        public static ConstructorInfo GetSuitableConstructor<T>() =>
+
+        public static ConstructorInfo GetSuitableConstructor1<T>() =>
             typeof(T)
                 .GetConstructors()
                 .OrderByDescending(info => info.GetParameters().Length)
                 .FirstOrDefault()
             ?? throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
 
-        private static Type GetCorrectedType<T>(T instance) =>
+        public static Type GetCorrectedType<T>(T instance) =>
             typeof(T).IsInterface
                 ? instance.GetType()
                 : typeof(T);

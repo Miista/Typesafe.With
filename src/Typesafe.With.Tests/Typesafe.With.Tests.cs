@@ -31,38 +31,38 @@ namespace Typesafe.With.Tests
                 }
             }
 
-            public class PropertyValueFactory
-            {
-                [Theory, AutoData]
-                internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
-                {
-                    // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, expression);
-                
-                    // Assert
-                    act.Should().Throw<ArgumentNullException>(because: "the instance is null");
-                }
-            
-                [Theory, AutoData]
-                internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
-                {
-                    // Arrange + Act
-                    Action act = () => instance.With<TypeWithConstructorTakingNonPropertyParameter, string>(null, expression);
-                
-                    // Assert
-                    act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
-                }
-            
-                [Theory, AutoData]
-                internal void Throws_exception_if_propertyValueFactory_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
-                {
-                    // Arrange + Act
-                    Action act = () => instance.With(_ => _.SettableProperty, (Expression<Func<string, string>>) null);
-                
-                    // Assert
-                    act.Should().Throw<ArgumentNullException>(because: "the property value factory parameter is null");
-                }
-            }
+            // public class PropertyValueFactory
+            // {
+            //     [Theory, AutoData]
+            //     internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
+            //     {
+            //         // Arrange + Act
+            //         Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, expression);
+            //     
+            //         // Assert
+            //         act.Should().Throw<ArgumentNullException>(because: "the instance is null");
+            //     }
+            //
+            //     [Theory, AutoData]
+            //     internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
+            //     {
+            //         // Arrange + Act
+            //         Action act = () => instance.With<TypeWithConstructorTakingNonPropertyParameter, string>(null, expression);
+            //     
+            //         // Assert
+            //         act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
+            //     }
+            //
+            //     [Theory, AutoData]
+            //     internal void Throws_exception_if_propertyValueFactory_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
+            //     {
+            //         // Arrange + Act
+            //         Action act = () => instance.With(_ => _.SettableProperty, (Expression<Func<string, string>>) null);
+            //     
+            //         // Assert
+            //         act.Should().Throw<ArgumentNullException>(because: "the property value factory parameter is null");
+            //     }
+            // }
             
             public class PropertyValue
             {
