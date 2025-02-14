@@ -1,4 +1,5 @@
 ﻿using System;
+using Domain;
 using Typesafe.With;
 
 namespace Typesafe.Sandbox
@@ -13,7 +14,7 @@ namespace Typesafe.Sandbox
         House House { get; set; }
     }
 
-    class HogwartsStudents : IStudent
+    public class HogwartsStudents : IStudent
     {
         public string Name { get; set; }
         public House House { get; set; }
@@ -21,7 +22,7 @@ namespace Typesafe.Sandbox
         public override string ToString() => $"Name={Name};House={House}";
     }
     
-    public partial class Person
+    class Person
     {
         public string Name { get; }
         public int Age { get; }
@@ -36,7 +37,7 @@ namespace Typesafe.Sandbox
         public override string ToString() => $"Name={Name}; Age={Age}; LastName={LastName}; HashCode={GetHashCode()};";
     }
 
-    class NoCtor
+    public class NoCtor
     {
         public string Name { get; set; }
 
@@ -47,7 +48,7 @@ namespace Typesafe.Sandbox
     {
     }
     
-    internal class Student
+    public class Student
     {
         public string Name { get; }
         public House House { get; }
@@ -55,7 +56,7 @@ namespace Typesafe.Sandbox
         public Student(string name, House house) => (Name, House) = (name, house);
     }
 
-    enum House
+    public enum House
     {
         Gryffindor,
         Slytherin
@@ -63,7 +64,7 @@ namespace Typesafe.Sandbox
     
     class Program
     {
-        public class Test
+        private class Test
         {
             public string Name { get; set; }
         }
@@ -74,6 +75,9 @@ namespace Typesafe.Sandbox
                 var person1 = new Person("Name", 10);
                 var student = new Student("Harry", House.Gryffindor);
                 var withHouse = student.WithHouse(House.Slytherin).WithName("Malfoy");
+                var class1 = new Class1();
+                var withName = class1.WithName("x");
+                // Console.WriteLine(class1.WithName("Hey"));
             }
             {
                 IStudent harry = new HogwartsStudents { Name = "Harry", House = House.Gryffindor }; 
