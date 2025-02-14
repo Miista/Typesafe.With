@@ -21,7 +21,7 @@ namespace Typesafe.Sandbox
         public override string ToString() => $"Name={Name};House={House}";
     }
     
-    class Person
+    public partial class Person
     {
         public string Name { get; }
         public int Age { get; }
@@ -47,7 +47,7 @@ namespace Typesafe.Sandbox
     {
     }
     
-    class Student
+    internal class Student
     {
         public string Name { get; }
         public House House { get; }
@@ -63,8 +63,18 @@ namespace Typesafe.Sandbox
     
     class Program
     {
+        public class Test
+        {
+            public string Name { get; set; }
+        }
+        
         static void Main(string[] args)
         {
+            {
+                var person1 = new Person("Name", 10);
+                var student = new Student("Harry", House.Gryffindor);
+                var withHouse = student.WithHouse(House.Slytherin).WithName("Malfoy");
+            }
             {
                 IStudent harry = new HogwartsStudents { Name = "Harry", House = House.Gryffindor }; 
                 IStudent draco = harry.With(p => p.Name, "Draco");

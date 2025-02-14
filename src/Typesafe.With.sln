@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "0. Solution", "0. Solution"
 		..\nuget\Typesafe.With.nuspec = ..\nuget\Typesafe.With.nuspec
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Typesafe.With.Generator", "Typesafe.With.Generator\Typesafe.With.Generator.csproj", "{79D538BB-ED90-4533-984E-5386C15D33AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,10 +38,15 @@ Global
 		{A6DEB506-47DE-49BC-A655-28639A02408D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6DEB506-47DE-49BC-A655-28639A02408D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6DEB506-47DE-49BC-A655-28639A02408D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79D538BB-ED90-4533-984E-5386C15D33AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79D538BB-ED90-4533-984E-5386C15D33AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79D538BB-ED90-4533-984E-5386C15D33AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79D538BB-ED90-4533-984E-5386C15D33AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{45357096-3011-4DCB-B37E-25C3DCBC63BB} = {7C3A5617-158F-4A4F-A02E-7639644FA948}
 		{5B130F5C-C220-4CE9-9B1E-27645E441860} = {7C82CEE7-C3A0-48A8-A284-A46CD7AA33E1}
 		{A6DEB506-47DE-49BC-A655-28639A02408D} = {7C82CEE7-C3A0-48A8-A284-A46CD7AA33E1}
+		{79D538BB-ED90-4533-984E-5386C15D33AD} = {7C82CEE7-C3A0-48A8-A284-A46CD7AA33E1}
 	EndGlobalSection
 EndGlobal
