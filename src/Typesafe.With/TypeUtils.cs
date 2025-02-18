@@ -11,6 +11,15 @@ namespace Typesafe.With
             GetCorrectedType(instance)
                 .GetProperties()
                 .ToDictionary(info => info.Name.ToParameterCase());
+        
+        public static Dictionary<PropertyInfo, PropertyInfo> GetProperties<T>(T instance)
+        {
+            var dictionary = GetCorrectedType(instance)
+                .GetProperties()
+                .ToDictionary(info => info);
+
+            return new Dictionary<PropertyInfo, PropertyInfo>(dictionary, new ConstructorHelper.InterfaceMappingEqualityCompater());
+        }
 
         public static ConstructorInfo GetSuitableConstructor<T>(T instance) =>
             GetCorrectedType(instance)

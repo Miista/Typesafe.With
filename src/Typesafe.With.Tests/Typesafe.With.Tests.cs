@@ -54,6 +54,31 @@ namespace Typesafe.With.Tests
                 }
             }
 
+            internal class BaseClass
+            {
+                public string Name { get; }
+
+                public BaseClass(string name)
+                {
+                    Name = name;
+                }
+            }
+            
+            internal class TypeWithBaseClass : BaseClass
+            {
+                public TypeWithBaseClass(string name) : base(name) { }
+            }
+            
+            internal class ChildClass : TypeWithBaseClass
+            {
+                public int Age { get; }
+
+                public ChildClass(int age, string name) : base(name)
+                {
+                    Age = age;
+                }
+            }
+
             // ReSharper disable once InconsistentNaming
             public static IEnumerable<object[]> Maps_parameters_to_properties_correctly_Data
             {
@@ -61,18 +86,29 @@ namespace Typesafe.With.Tests
                 {
                     yield return TestCase<TypeWithConstructorHavingSameNameInConstructor>(
                         constructorInfo: typeof(TypeWithConstructorHavingSameNameInConstructor).GetConstructors().First(),
-                        ( 0, nameof(TypeWithConstructorHavingSameNameInConstructor.SettableProperty) )
+                        (0, nameof(TypeWithConstructorHavingSameNameInConstructor.SettableProperty))
                     );
                     
                     yield return TestCase<TypeWithConstructorWithConstructorPropertyNameMismatch>(
                         constructorInfo: typeof(TypeWithConstructorWithConstructorPropertyNameMismatch).GetConstructors().First(),
-                        ( 0, nameof(TypeWithConstructorWithConstructorPropertyNameMismatch.DifferentName) )
+                        (0, nameof(TypeWithConstructorWithConstructorPropertyNameMismatch.DifferentName))
                     );
                     
                     yield return TestCase<TypeWithConstructorWithSwappedConstructorProperty>(
                         constructorInfo: typeof(TypeWithConstructorWithSwappedConstructorProperty).GetConstructors().First(),
-                        ( 1, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop1) ),
-                        ( 0, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop2) )
+                        (1, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop1)),
+                        (0, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop2))
+                    );
+
+                    yield return TestCase<TypeWithBaseClass>(
+                        constructorInfo: typeof(TypeWithBaseClass).GetConstructors().First(),
+                        (0, nameof(BaseClass.Name))
+                    );
+                    
+                    yield return TestCase<ChildClass>(
+                        constructorInfo: typeof(ChildClass).GetConstructors().First(),
+                        (0, nameof(ChildClass.Age)),
+                        (1, nameof(BaseClass.Name))
                     );
                     
                     yield break;

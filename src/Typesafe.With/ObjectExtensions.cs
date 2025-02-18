@@ -20,7 +20,7 @@ namespace Typesafe.With
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
             var property = propertyPicker.GetProperty();
-            var properties = new Dictionary<PropertyInfo, object>
+            var properties = new Dictionary<PropertyInfo, object>(new ConstructorHelper.PropertyMetadataTokenEqualityComparer())
             {
                 {property, new DependentValue(propertyValueFactory)}
             };
@@ -42,7 +42,7 @@ namespace Typesafe.With
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
             var property = propertyPicker.GetProperty();
-            var properties = new Dictionary<PropertyInfo, object>
+            var properties = new Dictionary<PropertyInfo, object>(new ConstructorHelper.PropertyMetadataTokenEqualityComparer())
             {
                 {property, propertyValue}
             };

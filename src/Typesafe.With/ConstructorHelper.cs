@@ -29,6 +29,21 @@ namespace Typesafe.With
             }
         }
 
+        internal class InterfaceMappingEqualityCompater : IEqualityComparer<PropertyInfo>
+        {
+            public bool Equals(PropertyInfo x, PropertyInfo y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null) return false;
+                if (y is null) return false;
+                if (x.GetType() != y.GetType()) return false;
+                
+                return x.MetadataToken == y.MetadataToken;
+            }
+
+            public int GetHashCode(PropertyInfo obj) => obj.MetadataToken;
+        }
+        
         internal class PropertyMetadataTokenEqualityComparer : IEqualityComparer<PropertyInfo>
         {
             public bool Equals(PropertyInfo x, PropertyInfo y)

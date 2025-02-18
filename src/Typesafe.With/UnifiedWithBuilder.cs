@@ -24,7 +24,7 @@ namespace Typesafe.With
             var p = properties.ToDictionary(kvp => kvp.Key.Name.ToParameterCase(), kvp => kvp.Value);
             
             // 1. Construct instance of T (and set properties via constructor)
-            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, p, _constructorInfo, valueResolver);
+            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
             
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
@@ -41,13 +41,13 @@ namespace Typesafe.With
             return enrichedInstanceWithCopiedProperties;
         }
 
-        private static (TInstance Instance, Dictionary<string, object> RemainingProperties) WithByConstructor<TInstance>(
+        private static (TInstance Instance, Dictionary<PropertyInfo, object> RemainingProperties) WithByConstructor<TInstance>(
             TInstance instance,
-            Dictionary<string, object> newProperties,
+            Dictionary<PropertyInfo, object> newProperties,
             ConstructorInfo constructorInfo,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var remainingProperties = new Dictionary<string, object>(newProperties);
+            var remainingProperties = new Dictionary<PropertyInfo, object>(newProperties, new ConstructorHelper.PropertyMetadataTokenEqualityComparer());
             var parameters = BuildParameters(remainingProperties, constructorInfo, instance, newProperties, dependentValueResolver);
 
             var constructedInstance = constructorInfo.Invoke(parameters) is TInstance castedInstance
@@ -58,21 +58,22 @@ namespace Typesafe.With
         }
         
         private static object[] BuildParameters<TInstance>(
-            Dictionary<string, object> remainingProperties,
+            Dictionary<PropertyInfo, object> remainingProperties,
             ConstructorInfo constructorInfo,
             TInstance instance,
-            Dictionary<string, object> newProperties,
+            Dictionary<PropertyInfo, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
             var existingProperties = TypeUtils.GetPropertyDictionary(instance);
             var resolvedConstructorParameters = new List<object>();
             var constructorParameters = constructorInfo.GetParameters();
-            
+            var parameter2PropertyMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
             foreach (var parameter in constructorParameters)
             {
                 var (existingProperty, propertyName) = TryFindExistingProperty(parameter);
                 var originalValue = existingProperty?.GetValue(instance);
-                var hasNewValue = newProperties.TryGetValue(propertyName, out var newValue);
+                var hasNewValue = newProperties.TryGetValue(existingProperty, out var newValue);
                 var value = hasNewValue
                     ? newValue is DependentValue dependentValue
                         ? dependentValueResolver.Resolve(dependentValue, existingProperty)
@@ -80,13 +81,18 @@ namespace Typesafe.With
                     : originalValue;
 
                 resolvedConstructorParameters.Add(value);
-                remainingProperties.Remove(propertyName);
+                remainingProperties.Remove(existingProperty);
             }
 
             return resolvedConstructorParameters.ToArray();
             
             (PropertyInfo ExistingProperty, string PropertyName) TryFindExistingProperty(ParameterInfo parameterInfo)
             {
+                if (parameter2PropertyMap.TryGetValue(parameterInfo, out var existingProperty))
+                {
+                    return (existingProperty, existingProperty.Name);
+                }
+                
                 // Can we find a matching property?
                 if (existingProperties.TryGetValue(parameterInfo.Name, out var existingPropertyByExactMatch))
                 {
@@ -118,13 +124,14 @@ namespace Typesafe.With
         /// <returns>A mutated instance.</returns>
         /// <exception cref="InvalidOperationException">If the property does not exist or cannot be written to.</exception>
         /// <exception cref="ArgumentNullException">If any of the arguments are null.</exception>
-        private static (TInstance Instance, Dictionary<string, object> RemainingProperties) EnrichByProperty<TInstance>(
+        private static (TInstance Instance, Dictionary<PropertyInfo, object> RemainingProperties) EnrichByProperty<TInstance>(
             TInstance instance,
-            Dictionary<string, object> propertiesToSet,
+            Dictionary<PropertyInfo, object> propertiesToSet,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = (Dictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
-            var remainingProperties = new Dictionary<string, object>(propertiesToSet);
+            var t = instance.GetType();
+            var existingProperties = TypeUtils.GetProperties(instance);
+            var remainingProperties = new Dictionary<PropertyInfo, object>(propertiesToSet);
 
             foreach (var property in propertiesToSet)
             {
