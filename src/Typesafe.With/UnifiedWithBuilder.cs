@@ -14,7 +14,7 @@ namespace Typesafe.With
             _constructorInfo = constructorInfo ?? throw new ArgumentNullException(nameof(constructorInfo));
         }
 
-        public T Construct(T instance, IDictionary<PropertyInfo, object> properties)
+        public T Construct(T instance, Dictionary<PropertyInfo, object> properties)
         {
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (properties == null) throw new ArgumentNullException(nameof(properties));
@@ -41,9 +41,9 @@ namespace Typesafe.With
             return enrichedInstanceWithCopiedProperties;
         }
 
-        private static (TInstance Instance, IDictionary<string, object> RemainingProperties) WithByConstructor<TInstance>(
+        private static (TInstance Instance, Dictionary<string, object> RemainingProperties) WithByConstructor<TInstance>(
             TInstance instance,
-            IDictionary<string, object> newProperties,
+            Dictionary<string, object> newProperties,
             ConstructorInfo constructorInfo,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
@@ -58,10 +58,10 @@ namespace Typesafe.With
         }
         
         private static object[] BuildParameters<TInstance>(
-            IDictionary<string, object> remainingProperties,
+            Dictionary<string, object> remainingProperties,
             ConstructorInfo constructorInfo,
             TInstance instance,
-            IDictionary<string, object> newProperties,
+            Dictionary<string, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
             var existingProperties = TypeUtils.GetPropertyDictionary(instance);
@@ -118,12 +118,12 @@ namespace Typesafe.With
         /// <returns>A mutated instance.</returns>
         /// <exception cref="InvalidOperationException">If the property does not exist or cannot be written to.</exception>
         /// <exception cref="ArgumentNullException">If any of the arguments are null.</exception>
-        private static (TInstance Instance, IDictionary<string, object> RemainingProperties) EnrichByProperty<TInstance>(
+        private static (TInstance Instance, Dictionary<string, object> RemainingProperties) EnrichByProperty<TInstance>(
             TInstance instance,
-            IDictionary<string, object> propertiesToSet,
+            Dictionary<string, object> propertiesToSet,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var existingProperties = (Dictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
             var remainingProperties = new Dictionary<string, object>(propertiesToSet);
 
             foreach (var property in propertiesToSet)
@@ -151,11 +151,11 @@ namespace Typesafe.With
 
         private static IEnumerable<PropertyInfo> GetCopyProperties(
             ConstructorInfo constructorInfo,
-            IDictionary<string, object> excludeProperties,
+            Dictionary<string, object> excludeProperties,
             T instance
         )
         {
-            var publicProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var publicProperties = (Dictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))
