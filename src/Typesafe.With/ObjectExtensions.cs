@@ -81,8 +81,12 @@ namespace Typesafe.With
 
         private static bool HasConstructorParameter<T>(PropertyInfo propertyName, T instance)
         {
-            var constructorParameters = TypeUtils.GetSuitableConstructor(instance).GetParameters();
-            
+            var constructor = TypeUtils.GetSuitableConstructor(instance);
+            var property2ParameterMap = ConstructorHelper.CreateParameterInfoMap(constructor, typeof(T).GetProperties()).ToDictionary(kvp => kvp.Value, kvp => kvp.Key, new ConstructorHelper.PropertyMetadataTokenEqualityComparer());
+            var constructorParameters = constructor.GetParameters();
+
+            return property2ParameterMap.ContainsKey(propertyName);
+
             // Can we find a matching constructor parameter?
             var hasConstructorParameter = constructorParameters
                 .Any(info => string.Equals(info.Name, propertyName.Name.ToParameterCase(), StringComparison.Ordinal));

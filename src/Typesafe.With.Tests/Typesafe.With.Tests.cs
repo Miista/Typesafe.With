@@ -676,11 +676,6 @@ namespace Typesafe.With.Tests
             internal class TypeWithoutMatchingConstructorArgument
             {
                 public string FullName { get; }
-
-                public TypeWithoutMatchingConstructorArgument(string name)
-                {
-                    FullName = name;
-                }
             }
         
             [Theory, AutoData]
