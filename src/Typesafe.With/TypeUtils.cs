@@ -12,13 +12,13 @@ namespace Typesafe.With
                 .GetProperties()
                 .ToDictionary(info => info.Name.ToParameterCase());
         
-        public static Dictionary<PropertyInfo, PropertyInfo> GetProperties<T>(T instance)
+        public static IDictionary<PropertyInfo, PropertyInfo> GetProperties<T>(T instance)
         {
             var dictionary = GetCorrectedType(instance)
                 .GetProperties()
                 .ToDictionary(info => info);
 
-            return new Dictionary<PropertyInfo, PropertyInfo>(dictionary, new ConstructorHelper.InterfaceMappingEqualityCompater());
+            return new ConstructorParameterMap(dictionary, instance.GetType());
         }
 
         public static ConstructorInfo GetSuitableConstructor<T>(T instance) =>

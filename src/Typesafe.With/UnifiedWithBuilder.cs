@@ -64,15 +64,14 @@ namespace Typesafe.With
             Dictionary<PropertyInfo, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var existingProperties = TypeUtils.GetPropertyDictionary(instance);
             var resolvedConstructorParameters = new List<object>();
             var constructorParameters = constructorInfo.GetParameters();
             var parameter2PropertyMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
             foreach (var parameter in constructorParameters)
             {
-                var (existingProperty, propertyName) = TryFindExistingProperty(parameter);
-                var originalValue = existingProperty?.GetValue(instance);
+                var existingProperty = TryFindExistingProperty(parameter);
+                var originalValue = existingProperty.GetValue(instance);
                 var hasNewValue = newProperties.TryGetValue(existingProperty, out var newValue);
                 var value = hasNewValue
                     ? newValue is DependentValue dependentValue
@@ -86,31 +85,18 @@ namespace Typesafe.With
 
             return resolvedConstructorParameters.ToArray();
             
-            (PropertyInfo ExistingProperty, string PropertyName) TryFindExistingProperty(ParameterInfo parameterInfo)
+            PropertyInfo TryFindExistingProperty(ParameterInfo parameterInfo)
             {
                 if (parameter2PropertyMap.TryGetValue(parameterInfo, out var existingProperty))
                 {
-                    return (existingProperty, existingProperty.Name);
+                    return existingProperty;
                 }
                 
-                // Can we find a matching property?
-                if (existingProperties.TryGetValue(parameterInfo.Name, out var existingPropertyByExactMatch))
-                {
-                    return (existingPropertyByExactMatch, parameterInfo.Name);
-                }
-
-                // Can we find a matching property if we lowercase both the constructor parameter and property name?
-                var existingPropertyKey =
-                    existingProperties.Keys.FirstOrDefault(key => string.Equals(key, parameterInfo.Name, StringComparison.InvariantCultureIgnoreCase))
-                    ?? throw new InvalidOperationException(
-                        $"Error creating instance of type '{typeof(TInstance)}': Cannot find property for constructor parameter '{parameterInfo.Name}'. "
-                        + "This could be a sign that the constructor contains logic. "
-                        + "Ensure that the constructor parameter has a corresponding property."
-                    );
-
-                var existingPropertyByLowercaseMatch = existingProperties[existingPropertyKey];
-                
-                return (existingPropertyByLowercaseMatch, existingPropertyKey);
+                throw new InvalidOperationException(
+                    $"Error creating instance of type '{typeof(TInstance)}': Cannot find property for constructor parameter '{parameterInfo.Name}'. "
+                    + "This could be a sign that the constructor contains logic. "
+                    + "Ensure that the constructor parameter has a corresponding property."
+                );
             }
         }
 
@@ -129,7 +115,6 @@ namespace Typesafe.With
             Dictionary<PropertyInfo, object> propertiesToSet,
             DependentValueResolver<TInstance> dependentValueResolver)
         {
-            var t = instance.GetType();
             var existingProperties = TypeUtils.GetProperties(instance);
             var remainingProperties = new Dictionary<PropertyInfo, object>(propertiesToSet);
 
@@ -162,7 +147,7 @@ namespace Typesafe.With
             T instance
         )
         {
-            var publicProperties = (Dictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var publicProperties = TypeUtils.GetPropertyDictionary(instance);
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))

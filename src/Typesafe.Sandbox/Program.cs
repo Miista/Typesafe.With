@@ -60,6 +60,16 @@ namespace Typesafe.Sandbox
         Gryffindor,
         Slytherin
     }
+
+    class Lol
+    {
+        private string _name;
+        
+        public string Name
+        {
+            set => _name = value;
+        }
+    }
     
     class Program
     {
