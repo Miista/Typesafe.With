@@ -7,20 +7,18 @@ namespace Typesafe.With
 {
     internal class ConstructorParameterMap : Dictionary<PropertyInfo, PropertyInfo>, IDictionary<PropertyInfo, PropertyInfo>
     {
-        private readonly Dictionary<PropertyInfo, PropertyInfo> _values;
         private readonly Type _type;
 
-        public ConstructorParameterMap(Dictionary<PropertyInfo, PropertyInfo> values, Type type)
+        public ConstructorParameterMap(Dictionary<PropertyInfo, PropertyInfo> values, Type type) : base(values, new ConstructorHelper.PropertyMetadataTokenEqualityComparer())
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
             
-            _values = new Dictionary<PropertyInfo, PropertyInfo>(values, new ConstructorHelper.PropertyMetadataTokenEqualityComparer());
             _type = type ?? throw new ArgumentNullException(nameof(type));
         }
 
         public new bool TryGetValue(PropertyInfo key, out PropertyInfo value)
         {
-            if (_values.TryGetValue(key, out value))
+            if (base.TryGetValue(key, out value))
             {
                 return true;
             }
@@ -51,7 +49,7 @@ namespace Typesafe.With
             return false;
         }
         
-        private Dictionary<MethodInfo, PropertyInfo> PropertiesByGetMethod => _values.Keys.ToDictionary(p => p.GetMethod);
+        private Dictionary<MethodInfo, PropertyInfo> PropertiesByGetMethod => Keys.ToDictionary(p => p.GetMethod);
     }
     
 }

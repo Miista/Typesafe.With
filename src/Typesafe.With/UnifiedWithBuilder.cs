@@ -21,8 +21,6 @@ namespace Typesafe.With
 
             var valueResolver = new DependentValueResolver<T>(instance);
 
-            var p = properties.ToDictionary(kvp => kvp.Key.Name.ToParameterCase(), kvp => kvp.Value);
-            
             // 1. Construct instance of T (and set properties via constructor)
             var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
             
@@ -35,7 +33,7 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, p, constructedInstance);
+            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;
@@ -143,11 +141,13 @@ namespace Typesafe.With
 
         private static IEnumerable<PropertyInfo> GetCopyProperties(
             ConstructorInfo constructorInfo,
-            Dictionary<string, object> excludeProperties,
+            Dictionary<PropertyInfo, object> excludeProperties,
             T instance
         )
         {
-            var publicProperties = TypeUtils.GetPropertyDictionary(instance);
+            var p = excludeProperties.ToDictionary(kvp => kvp.Key.Name.ToParameterCase(), kvp => kvp.Value);
+
+            var publicProperties = TypeUtils.GetProperties(instance);
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))
@@ -158,7 +158,7 @@ namespace Typesafe.With
             // Remove properties set via constructor
             foreach (var parameter in GetConstructorParameterNames())
             {
-                publicProperties.Remove(parameter);
+                // publicProperties.Remove(parameter);
             }
 
             return publicProperties.Values.Where(info => info.CanWrite);
