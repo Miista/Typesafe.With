@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -82,24 +81,9 @@ namespace Typesafe.With
         private static bool HasConstructorParameter<T>(PropertyInfo propertyName, T instance)
         {
             var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var property2ParameterMap = ConstructorHelper.CreateParameterInfoMap(constructor, typeof(T).GetProperties()).ToDictionary(kvp => kvp.Value, kvp => kvp.Key, new ConstructorHelper.PropertyMetadataTokenEqualityComparer());
-            var constructorParameters = constructor.GetParameters();
+            var property2ParameterMap = ConstructorHelper.CreatePropertyInfoMap(constructor);
 
             return property2ParameterMap.ContainsKey(propertyName);
-
-            // Can we find a matching constructor parameter?
-            var hasConstructorParameter = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName.Name.ToParameterCase(), StringComparison.Ordinal));
-            
-            if (hasConstructorParameter) return true;
-
-            // Can we find a matching constructor parameter if we lowercase both parameter and property name?
-            var hasConstructorParameterByLowercase = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName.Name.ToParameterCase(), StringComparison.InvariantCultureIgnoreCase));
-
-            if (hasConstructorParameterByLowercase) return true;
-
-            return false;
         }
     }
 }

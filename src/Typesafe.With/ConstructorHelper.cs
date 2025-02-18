@@ -11,9 +11,45 @@ namespace Typesafe.With
 {
     internal static class ConstructorHelper
     {
+        private class ParameterMetadataTokenEqualityComparer : IEqualityComparer<ParameterInfo>
+        {
+            public bool Equals(ParameterInfo x, ParameterInfo y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null) return false;
+                if (y is null) return false;
+                if (x.GetType() != y.GetType()) return false;
+                
+                return x.MetadataToken == y.MetadataToken;
+            }
+
+            public int GetHashCode(ParameterInfo obj)
+            {
+                return obj.MetadataToken;
+            }
+        }
+
+        internal class PropertyMetadataTokenEqualityComparer : IEqualityComparer<PropertyInfo>
+        {
+            public bool Equals(PropertyInfo x, PropertyInfo y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null) return false;
+                if (y is null) return false;
+                if (x.GetType() != y.GetType()) return false;
+                
+                return x.MetadataToken == y.MetadataToken;
+            }
+
+            public int GetHashCode(PropertyInfo obj)
+            {
+                return obj.MetadataToken;
+            }
+        }
+        
         public static Dictionary<ParameterInfo, PropertyInfo> CreateParameterInfoMap(ConstructorInfo constructor, PropertyInfo[] properties = null)
         {
-            var map = new Dictionary<ParameterInfo, PropertyInfo>();
+            var map = new Dictionary<ParameterInfo, PropertyInfo>(new ParameterMetadataTokenEqualityComparer());
 
             var declaringType = constructor.DeclaringType
                                 ?? throw new Exception($"Method {constructor.Name} does not have a {nameof(ConstructorInfo.DeclaringType)}");
@@ -197,6 +233,12 @@ namespace Typesafe.With
             }
 
             return map;
+        }
+        
+        public static Dictionary<PropertyInfo, ParameterInfo> CreatePropertyInfoMap(ConstructorInfo constructor, PropertyInfo[] properties = null)
+        {
+            return CreateParameterInfoMap(constructor, properties)
+                .ToDictionary(kvp => kvp.Value, kvp => kvp.Key, new PropertyMetadataTokenEqualityComparer());
         }
     }
 }
