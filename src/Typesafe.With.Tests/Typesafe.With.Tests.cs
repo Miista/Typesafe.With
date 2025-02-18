@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using AutoFixture.Xunit2;
 using FluentAssertions;
 using Xunit;
@@ -19,6 +20,118 @@ namespace Typesafe.With.Tests
 {
     public class Tests
     {
+        public class ConstructorParameterMapTests
+        {
+            internal class TypeWithConstructorHavingSameNameInConstructor
+            {
+                public string SettableProperty { get; set; }
+
+                public TypeWithConstructorHavingSameNameInConstructor(string settableProperty, string randomNonInstanceValue)
+                {
+                    SettableProperty = settableProperty;
+                }
+            }
+
+            internal class TypeWithConstructorWithConstructorPropertyNameMismatch
+            {
+                public string DifferentName { get; set; }
+
+                public TypeWithConstructorWithConstructorPropertyNameMismatch(string settableProperty)
+                {
+                    DifferentName = settableProperty;
+                }
+            }
+
+            internal class TypeWithConstructorWithSwappedConstructorProperty
+            {
+                public string Prop1 { get; set; }
+                public int Prop2 { get; set; }
+
+                public TypeWithConstructorWithSwappedConstructorProperty(int prop2, string prop1)
+                {
+                    Prop2 = prop2;
+                    Prop1 = prop1;
+                }
+            }
+
+            // ReSharper disable once InconsistentNaming
+            public static IEnumerable<object[]> Maps_parameters_to_properties_correctly_Data
+            {
+                get
+                {
+                    yield return TestCase<TypeWithConstructorHavingSameNameInConstructor>(
+                        constructorInfo: typeof(TypeWithConstructorHavingSameNameInConstructor).GetConstructors().First(),
+                        ( 0, nameof(TypeWithConstructorHavingSameNameInConstructor.SettableProperty) )
+                    );
+                    
+                    yield return TestCase<TypeWithConstructorWithConstructorPropertyNameMismatch>(
+                        constructorInfo: typeof(TypeWithConstructorWithConstructorPropertyNameMismatch).GetConstructors().First(),
+                        ( 0, nameof(TypeWithConstructorWithConstructorPropertyNameMismatch.DifferentName) )
+                    );
+                    
+                    yield return TestCase<TypeWithConstructorWithSwappedConstructorProperty>(
+                        constructorInfo: typeof(TypeWithConstructorWithSwappedConstructorProperty).GetConstructors().First(),
+                        ( 1, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop1) ),
+                        ( 0, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop2) )
+                    );
+                    
+                    yield break;
+
+                    object[] TestCase<T>(ConstructorInfo constructorInfo, params (int Index, string Name)[] mappings)
+                    {
+                        var constructorParameters = constructorInfo.GetParameters();
+                        var keyValuePairs = mappings.Select(
+                                kvp => new KeyValuePair<ParameterInfo, PropertyInfo>(constructorParameters[kvp.Index], typeof(T).GetProperty(kvp.Name))
+                            )
+                            .ToArray();
+                        return new object[] { constructorInfo, keyValuePairs };
+                    }
+                }
+            }
+
+            [Theory]
+            [MemberData(nameof(Maps_parameters_to_properties_correctly_Data))]
+            public void Maps_parameters_to_properties_correctly<T>(ConstructorInfo constructorInfo, KeyValuePair<ParameterInfo, PropertyInfo>[] mappings)
+            {
+                // Act
+                var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                // Assert
+                parameterInfoMap.Should().NotBeEmpty();
+
+                parameterInfoMap.Should().HaveCount(mappings.Length, because: "that is the number of parameters in the constructor which must be mapped");
+                
+                foreach (var (parameter, property) in mappings)
+                {
+                    parameterInfoMap.Should().ContainKey(parameter, because: "the parameter should be mapped");
+                    parameterInfoMap[parameter].Should().BeSameAs(property, because: "the property should be mapped to the parameter");
+                }
+            }
+
+            [Theory]
+            [AutoData]
+            internal void NAME(TypeWithConstructorWithSwappedConstructorProperty instance)
+            {
+                // Act
+                var result = instance.With(i => i.Prop1, "a");
+
+                // Assert
+                result.Prop1.Should().Be("a");
+                result.Prop2.Should().Be(instance.Prop2);
+            }
+            
+            [Theory]
+            [AutoData]
+            internal void NAME1(TypeWithConstructorWithConstructorPropertyNameMismatch instance)
+            {
+                // Act
+                var result = instance.With(i => i.DifferentName, "a");
+
+                // Assert
+                result.DifferentName.Should().Be("a");
+            }
+        }
+        
         public class Errors
         {
             internal class TypeWithConstructorTakingNonPropertyParameter

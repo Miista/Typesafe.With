@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Typesafe.With.Tests")]
 
 namespace Typesafe.With
 {
