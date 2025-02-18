@@ -22,5 +22,22 @@ namespace Typesafe.With
                     throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'");
             }
         }
+        
+        public static PropertyInfo GetProperty<T, TProperty>(this Expression<Func<T, TProperty>> expression)
+        {
+            if (expression == null) throw new ArgumentNullException(nameof(expression));
+            
+            switch (expression.Body)
+            {
+                case UnaryExpression u when u.Operand is MemberExpression um:
+                    return (um.Member as PropertyInfo);
+                case MemberExpression m when m.Expression.NodeType == ExpressionType.MemberAccess:
+                    throw new InvalidOperationException($"Expression '{expression}' represents a nested property");
+                case MemberExpression m:
+                    return (m.Member as PropertyInfo);
+                default:
+                    throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'");
+            }
+        }
     }
 }

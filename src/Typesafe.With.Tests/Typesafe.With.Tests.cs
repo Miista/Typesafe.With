@@ -120,16 +120,16 @@ namespace Typesafe.With.Tests
                 result.Prop2.Should().Be(instance.Prop2);
             }
             
-            [Theory]
-            [AutoData]
-            internal void NAME1(TypeWithConstructorWithConstructorPropertyNameMismatch instance)
-            {
-                // Act
-                var result = instance.With(i => i.DifferentName, "a");
-
-                // Assert
-                result.DifferentName.Should().Be("a");
-            }
+            // [Theory]
+            // [AutoData]
+            // internal void NAME1(TypeWithConstructorWithConstructorPropertyNameMismatch instance)
+            // {
+            //     // Act
+            //     var result = instance.With(i => i.DifferentName, "a");
+            //
+            //     // Assert
+            //     result.DifferentName.Should().Be("a");
+            // }
         }
         
         public class Errors

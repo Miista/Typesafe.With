@@ -14,15 +14,17 @@ namespace Typesafe.With
             _constructorInfo = constructorInfo ?? throw new ArgumentNullException(nameof(constructorInfo));
         }
 
-        public T Construct(T instance, IDictionary<string, object> properties)
+        public T Construct(T instance, IDictionary<PropertyInfo, object> properties)
         {
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (properties == null) throw new ArgumentNullException(nameof(properties));
 
             var valueResolver = new DependentValueResolver<T>(instance);
+
+            var p = properties.ToDictionary(kvp => kvp.Key.Name.ToParameterCase(), kvp => kvp.Value);
             
             // 1. Construct instance of T (and set properties via constructor)
-            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
+            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, p, _constructorInfo, valueResolver);
             
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
@@ -33,7 +35,7 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
+            var copyProperties = GetCopyProperties(_constructorInfo, p, constructedInstance);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;

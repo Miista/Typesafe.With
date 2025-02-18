@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Typesafe.With.Tests")]
@@ -19,13 +20,13 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
+            var property = propertyPicker.GetProperty();
+            var properties = new Dictionary<PropertyInfo, object>
             {
-                {propertyName, new DependentValue(propertyValueFactory)}
+                {property, new DependentValue(propertyValueFactory)}
             };
 
-            Validate(propertyName, instance);
+            Validate(property, instance);
             
             var constructor = TypeUtils.GetSuitableConstructor(instance);
             var builder = new UnifiedWithBuilder<T>(constructor);
@@ -41,13 +42,13 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
+            var property = propertyPicker.GetProperty();
+            var properties = new Dictionary<PropertyInfo, object>
             {
-                {propertyName, propertyValue}
+                {property, propertyValue}
             };
 
-            Validate(propertyName, instance);
+            Validate(property, instance);
             
             var constructor = TypeUtils.GetSuitableConstructor(instance);
             var builder = new UnifiedWithBuilder<T>(constructor);
@@ -55,7 +56,7 @@ namespace Typesafe.With
             return builder.Construct(instance, properties);
         }
 
-        private static void Validate<T>(string propertyName, T instance)
+        private static void Validate<T>(PropertyInfo propertyName, T instance)
         {
             // Can we set the property via constructor?
             var hasConstructorParameter = HasConstructorParameter(propertyName, instance);
@@ -63,35 +64,34 @@ namespace Typesafe.With
             if (hasConstructorParameter) return;
             
             // Can we set the property via property setter?
-            var hasPropertySetter = HasPropertySetter(propertyName, instance);
+            var hasPropertySetter = HasPropertySetter(propertyName);
             
             if (hasPropertySetter) return;
 
             // If we cannot do either, then there is no point in continuing.
             throw new InvalidOperationException(
-                $"Error calling {nameof(With)} on type {typeof(T)}: Property '{propertyName.ToPropertyCase()}' cannot be set via constructor or property setter. You can fix this by making the property settable or adding it as a constructor parameter."
+                $"Error calling {nameof(With)} on type {typeof(T)}: Property '{propertyName.Name}' cannot be set via constructor or property setter. You can fix this by making the property settable or adding it as a constructor parameter."
             );
         }
 
-        private static bool HasPropertySetter<T>(string propertyName, T instance)
+        private static bool HasPropertySetter(PropertyInfo propertyName)
         {
-            return TypeUtils.GetPropertyDictionary(instance).TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
+            return propertyName.CanWrite;
         }
 
-        //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
-        private static bool HasConstructorParameter<T>(string propertyName, T instance)
+        private static bool HasConstructorParameter<T>(PropertyInfo propertyName, T instance)
         {
             var constructorParameters = TypeUtils.GetSuitableConstructor(instance).GetParameters();
             
             // Can we find a matching constructor parameter?
             var hasConstructorParameter = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName, StringComparison.Ordinal));
+                .Any(info => string.Equals(info.Name, propertyName.Name.ToParameterCase(), StringComparison.Ordinal));
             
             if (hasConstructorParameter) return true;
 
             // Can we find a matching constructor parameter if we lowercase both parameter and property name?
             var hasConstructorParameterByLowercase = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName, StringComparison.InvariantCultureIgnoreCase));
+                .Any(info => string.Equals(info.Name, propertyName.Name.ToParameterCase(), StringComparison.InvariantCultureIgnoreCase));
 
             if (hasConstructorParameterByLowercase) return true;
 
