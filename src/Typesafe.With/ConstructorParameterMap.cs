@@ -48,7 +48,18 @@ namespace Typesafe.With
             
             return false;
         }
-        
+
+        public new bool Remove(PropertyInfo key)
+        {
+            if (TryGetValue(key, out var actualKey))
+            {
+                return base.Remove(actualKey);
+            }
+
+            return false;
+        }
+
+
         private Dictionary<MethodInfo, PropertyInfo> PropertiesByGetMethod => Keys.ToDictionary(p => p.GetMethod);
     }
     

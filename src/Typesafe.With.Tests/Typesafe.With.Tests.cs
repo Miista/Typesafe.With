@@ -580,6 +580,61 @@ namespace Typesafe.With.Tests
                 result.Should().NotBeNull();
                 result.Age.Should().Be(newValue);
             }
+
+            internal class TypeWithProperty
+            {
+                public string Name { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Does_not_copy_property_if_it_has_a_new_value(TypeWithProperty source, string newValue)
+            {
+                // Act
+                var result = source.With(a => a.Name, newValue);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Name.Should().Be(newValue);
+            }
+
+            private interface IInterfaceWithProperty
+            {
+                string Name { get; set; }
+                int Age { get; set; }
+            }
+
+            internal class TypeWithPropertyFromInterface : IInterfaceWithProperty
+            {
+                public string Name { get; set; }
+                public int Age { get; set; }
+            }
+            
+            [Theory, AutoData]
+            internal void Copies_correct_properties_when_T_is_typed_as_a_concrete_type(TypeWithPropertyFromInterface source, string newValue)
+            {
+                // Act
+                // ReSharper disable once RedundantTypeArgumentsOfMethod
+                // We explicitly type this as IInterfaceWithProperty
+                IInterfaceWithProperty result = source.With<TypeWithPropertyFromInterface, string>(a => a.Name, newValue);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Age.Should().Be(source.Age, because: "the property has been copied");
+                result.Name.Should().NotBeEquivalentTo(source.Name, because: "the property has been given a new value via With");
+                result.Name.Should().BeEquivalentTo(newValue, because: "that is the value given via With");
+            }
+            
+            [Theory, AutoData]
+            internal void Copies_correct_properties_when_T_is_typed_as_an_interface(TypeWithPropertyFromInterface source, string newValue)
+            {
+                // Act
+                // ReSharper disable once SuggestVarOrType_SimpleTypes
+                IInterfaceWithProperty result = source.With<IInterfaceWithProperty, string>(a => a.Name, newValue);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Name.Should().BeEquivalentTo(newValue, because: "that is the value given via With");
+            }
         }
 
         public class MemberAccess
@@ -948,6 +1003,38 @@ namespace Typesafe.With.Tests
                 // Assert
                 act.Should().NotThrow(because: "With works on an interface");
 
+                var updatedPerson = act();
+                updatedPerson.Should().BeAssignableTo<IPerson>(because: "the type should not have changed");
+                updatedPerson.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+            }
+            
+            [Theory, AutoData]
+            private void With_works_on_interfaces_where_result_is_explicitly_typed_to_an_interface(Person concretePerson, string newName)
+            {
+                // Arrange + Act
+                // We specifically type this as Person => Person
+                Func<Person> act = () => concretePerson.With(p => p.Name, newName);
+
+                // Assert
+                act.Should().NotThrow(because: "With works on an interface");
+
+                // Here, we cast the result to IPerson
+                IPerson updatedPerson = act();
+                updatedPerson.Should().BeAssignableTo<IPerson>(because: "the type should not have changed");
+                updatedPerson.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+            }
+            
+            [Theory, AutoData]
+            private void With_works_on_interfaces_where_result_is_typed_using_var(Person concretePerson, string newName)
+            {
+                // Arrange + Act
+                // We specifically type this as Person => IPerson
+                Func<IPerson> act = () => concretePerson.With(p => p.Name, newName);
+
+                // Assert
+                act.Should().NotThrow(because: "With works on an interface");
+
+                // Here, the type of updatedPerson will be IPerson
                 var updatedPerson = act();
                 updatedPerson.Should().BeAssignableTo<IPerson>(because: "the type should not have changed");
                 updatedPerson.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");

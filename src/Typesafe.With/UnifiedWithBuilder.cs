@@ -152,6 +152,7 @@ namespace Typesafe.With
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))
             {
+                publicProperties.TryGetValue(parameter, out var x);
                 publicProperties.Remove(parameter);
             }
             
