@@ -20,28 +20,292 @@ namespace Typesafe.With.Tests
 {
     public class Tests
     {
+        public class ConstructorHelperTests
+        {
+            public class ExplicitConstructors
+            {
+                private class TypeWithConstructorHavingSameNameInConstructor
+                {
+                    public string SettableProperty { get; set; }
+
+                    public TypeWithConstructorHavingSameNameInConstructor(string settableProperty, string randomNonInstanceValue)
+                    {
+                        SettableProperty = settableProperty;
+                    }
+                }
+
+                private class TypeWithConstructorWithConstructorPropertyNameMismatch
+                {
+                    public string DifferentName { get; set; }
+
+                    public TypeWithConstructorWithConstructorPropertyNameMismatch(string settableProperty)
+                    {
+                        DifferentName = settableProperty;
+                    }
+                }
+
+                private class TypeWithConstructorWithSwappedConstructorProperty
+                {
+                    public string Prop1 { get; set; }
+                    public int Prop2 { get; set; }
+
+                    public TypeWithConstructorWithSwappedConstructorProperty(int prop2, string prop1)
+                    {
+                        Prop2 = prop2;
+                        Prop1 = prop1;
+                    }
+                }
+
+                private class BaseClass
+                {
+                    public string Name { get; }
+
+                    protected BaseClass(string name)
+                    {
+                        Name = name;
+                    }
+                }
+
+                private class TypeWithBaseClass : BaseClass
+                {
+                    public TypeWithBaseClass(string name) : base(name) { }
+                }
+
+                private class ChildClass : TypeWithBaseClass
+                {
+                    public int Age { get; }
+
+                    public ChildClass(int age, string name) : base(name)
+                    {
+                        Age = age;
+                    }
+                }
+
+                [Theory]
+                [MemberData(nameof(Maps_parameters_to_properties_correctly_Data))]
+                public void Maps_parameters_to_properties_correctly<T>(
+                    ConstructorInfo constructorInfo,
+                    KeyValuePair<ParameterInfo, PropertyInfo>[] mappings
+                )
+                {
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().NotBeEmpty();
+
+                    parameterInfoMap.Should()
+                        .HaveCount(mappings.Length, because: "that is the number of parameters in the constructor which must be mapped");
+
+                    foreach (var (parameter, property) in mappings)
+                    {
+                        parameterInfoMap.Should().ContainKey(parameter, because: "the parameter should be mapped");
+                        parameterInfoMap[parameter].Should().BeSameAs(property, because: "the property should be mapped to the parameter");
+                    }
+                }
+
+                public static IEnumerable<object[]> Maps_parameters_to_properties_correctly_Data
+                {
+                    get
+                    {
+                        yield return TestCase<TypeWithConstructorHavingSameNameInConstructor>(
+                            constructorInfo: typeof(TypeWithConstructorHavingSameNameInConstructor).GetConstructors().First(),
+                            (0, nameof(TypeWithConstructorHavingSameNameInConstructor.SettableProperty))
+                        );
+
+                        yield return TestCase<TypeWithConstructorWithConstructorPropertyNameMismatch>(
+                            constructorInfo: typeof(TypeWithConstructorWithConstructorPropertyNameMismatch).GetConstructors().First(),
+                            (0, nameof(TypeWithConstructorWithConstructorPropertyNameMismatch.DifferentName))
+                        );
+
+                        yield return TestCase<TypeWithConstructorWithSwappedConstructorProperty>(
+                            constructorInfo: typeof(TypeWithConstructorWithSwappedConstructorProperty).GetConstructors().First(),
+                            (1, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop1)),
+                            (0, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop2))
+                        );
+
+                        yield return TestCase<TypeWithBaseClass>(
+                            constructorInfo: typeof(TypeWithBaseClass).GetConstructors().First(),
+                            (0, nameof(BaseClass.Name))
+                        );
+
+                        yield return TestCase<ChildClass>(
+                            constructorInfo: typeof(ChildClass).GetConstructors().First(),
+                            (0, nameof(ChildClass.Age)),
+                            (1, nameof(BaseClass.Name))
+                        );
+
+                        yield break;
+
+                        object[] TestCase<T>(ConstructorInfo constructorInfo, params (int Index, string Name)[] mappings)
+                        {
+                            var constructorParameters = constructorInfo.GetParameters();
+                            var keyValuePairs = mappings.Select(
+                                    kvp => new KeyValuePair<ParameterInfo, PropertyInfo>(
+                                        constructorParameters[kvp.Index],
+                                        typeof(T).GetProperty(kvp.Name)
+                                    )
+                                )
+                                .ToArray();
+                            return new object[] { constructorInfo, keyValuePairs };
+                        }
+                    }
+                }
+            }
+            
+            public class PrimaryConstructors
+            {
+                public static IEnumerable<object[]> Supports_primary_constructors_Data
+                {
+                    get
+                    {
+                        yield return TestCase<ConstructorWithSingleParameter>(
+                            constructorInfo: typeof(ConstructorWithSingleParameter).GetConstructors().First(),
+                            (0, nameof(ConstructorWithSingleParameter.Name))
+                        );
+                        
+                        yield return TestCase<ExplicitConstructorInheritingPrimaryConstructor>(
+                            constructorInfo: typeof(ExplicitConstructorInheritingPrimaryConstructor).GetConstructors().First(),
+                            (0, nameof(ConstructorWithSingleParameter.Name))
+                        );
+                        
+                        yield return TestCase<PrimaryConstructorInheritingPrimaryConstructor>(
+                            constructorInfo: typeof(PrimaryConstructorInheritingPrimaryConstructor).GetConstructors().First(),
+                            (0, nameof(ConstructorWithSingleParameter.Name)),
+                            (1, nameof(PrimaryConstructorInheritingPrimaryConstructor.Age))
+                        );
+                        
+                        yield break;
+                
+                        object[] TestCase<T>(ConstructorInfo constructorInfo, params (int Index, string Name)[] mappings)
+                        {
+                            var constructorParameters = constructorInfo.GetParameters();
+                            var keyValuePairs = mappings.Select(
+                                    kvp => new KeyValuePair<ParameterInfo, PropertyInfo>(constructorParameters[kvp.Index], typeof(T).GetProperty(kvp.Name))
+                                )
+                                .ToArray();
+                            return new object[] { constructorInfo, keyValuePairs };
+                        }
+                    }
+                }
+                
+                [Theory]
+                [MemberData(nameof(Supports_primary_constructors_Data))]
+                public void Supports_primary_constructors(ConstructorInfo constructorInfo, KeyValuePair<ParameterInfo, PropertyInfo>[] mappings)
+                {
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(mappings.Length, because: "that is the number of parameters in the constructor which must be mapped");
+                    
+                    foreach (var (parameter, property) in mappings)
+                    {
+                        parameterInfoMap.Should().ContainKey(parameter, because: "parameter {0} should be mapped", parameter);
+                        parameterInfoMap.Should().ContainValue(property, because: "property {0} should be mapped", property);
+                        var propertyInfo = parameterInfoMap[parameter];
+                        propertyInfo.Should().BeSameAs(property, because: "property {0} should be mapped to parameter {1}", property, parameter);
+                    }
+                }
+                
+                private class ConstructorWithSingleParameter(string name)
+                {
+                    public string Name => name;
+                }
+
+                [Fact]
+                public void Supports_primary_constructor()
+                {
+                    // Arrange
+                    var constructorInfo = typeof(ConstructorWithSingleParameter).GetConstructors().First();
+
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(1, because: "there is exactly one constructor parameter");
+                }
+
+                private class ExplicitConstructorInheritingPrimaryConstructor : ConstructorWithSingleParameter {
+                    // ReSharper disable once ConvertToPrimaryConstructor
+                    public ExplicitConstructorInheritingPrimaryConstructor(string name) : base(name) { }
+                }
+
+                [Fact]
+                public void Supports_explicit_constructor_inheriting_primary_constructor()
+                {
+                    // Arrange
+                    var constructorInfo = typeof(ExplicitConstructorInheritingPrimaryConstructor).GetConstructors().First();
+
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(1, because: "there is exactly one constructor parameter");
+                }
+
+                private class PrimaryConstructorInheritingPrimaryConstructor(string name, int age)
+                    : ConstructorWithSingleParameter(name)
+                {
+                    public int Age => age;
+                }
+
+                [Fact]
+                public void Supports_primary_constructor_inheriting_primary_constructor()
+                {
+                    // Arrange
+                    var constructorInfo = typeof(PrimaryConstructorInheritingPrimaryConstructor).GetConstructors().First();
+
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(2, because: "there is exactly two constructor parameters");
+                }
+                
+                private class TypeWithSynthesizedProperties(string name)
+                {
+                    public int Age => 10 + 1;
+                }
+
+                [Fact]
+                public void Does_not_include_synthesized_properties()
+                {
+                    // Arrange
+                    var constructorInfo = typeof(TypeWithSynthesizedProperties).GetConstructors().First();
+
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(0, because: "there is no constructor parameters");
+                }
+            }
+
+            public class SynthesizedProperties
+            {
+                private class TypeWithSynthesizedProperties
+                {
+                    public int Age => 10 + 1;
+                }
+
+                [Fact]
+                public void Does_not_include_synthesized_properties()
+                {
+                    // Arrange
+                    var constructorInfo = typeof(TypeWithSynthesizedProperties).GetConstructors().First();
+
+                    // Act
+                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+
+                    // Assert
+                    parameterInfoMap.Should().HaveCount(0, because: "there is no constructor parameters");
+                }
+            }
+        }
+        
         public class ConstructorParameterMapTests
         {
-            internal class TypeWithConstructorHavingSameNameInConstructor
-            {
-                public string SettableProperty { get; set; }
-
-                public TypeWithConstructorHavingSameNameInConstructor(string settableProperty, string randomNonInstanceValue)
-                {
-                    SettableProperty = settableProperty;
-                }
-            }
-
-            internal class TypeWithConstructorWithConstructorPropertyNameMismatch
-            {
-                public string DifferentName { get; set; }
-
-                public TypeWithConstructorWithConstructorPropertyNameMismatch(string settableProperty)
-                {
-                    DifferentName = settableProperty;
-                }
-            }
-
             internal class TypeWithConstructorWithSwappedConstructorProperty
             {
                 public string Prop1 { get; set; }
@@ -53,97 +317,7 @@ namespace Typesafe.With.Tests
                     Prop1 = prop1;
                 }
             }
-
-            internal class BaseClass
-            {
-                public string Name { get; }
-
-                public BaseClass(string name)
-                {
-                    Name = name;
-                }
-            }
             
-            internal class TypeWithBaseClass : BaseClass
-            {
-                public TypeWithBaseClass(string name) : base(name) { }
-            }
-            
-            internal class ChildClass : TypeWithBaseClass
-            {
-                public int Age { get; }
-
-                public ChildClass(int age, string name) : base(name)
-                {
-                    Age = age;
-                }
-            }
-
-            // ReSharper disable once InconsistentNaming
-            public static IEnumerable<object[]> Maps_parameters_to_properties_correctly_Data
-            {
-                get
-                {
-                    yield return TestCase<TypeWithConstructorHavingSameNameInConstructor>(
-                        constructorInfo: typeof(TypeWithConstructorHavingSameNameInConstructor).GetConstructors().First(),
-                        (0, nameof(TypeWithConstructorHavingSameNameInConstructor.SettableProperty))
-                    );
-                    
-                    yield return TestCase<TypeWithConstructorWithConstructorPropertyNameMismatch>(
-                        constructorInfo: typeof(TypeWithConstructorWithConstructorPropertyNameMismatch).GetConstructors().First(),
-                        (0, nameof(TypeWithConstructorWithConstructorPropertyNameMismatch.DifferentName))
-                    );
-                    
-                    yield return TestCase<TypeWithConstructorWithSwappedConstructorProperty>(
-                        constructorInfo: typeof(TypeWithConstructorWithSwappedConstructorProperty).GetConstructors().First(),
-                        (1, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop1)),
-                        (0, nameof(TypeWithConstructorWithSwappedConstructorProperty.Prop2))
-                    );
-
-                    yield return TestCase<TypeWithBaseClass>(
-                        constructorInfo: typeof(TypeWithBaseClass).GetConstructors().First(),
-                        (0, nameof(BaseClass.Name))
-                    );
-                    
-                    yield return TestCase<ChildClass>(
-                        constructorInfo: typeof(ChildClass).GetConstructors().First(),
-                        (0, nameof(ChildClass.Age)),
-                        (1, nameof(BaseClass.Name))
-                    );
-                    
-                    yield break;
-
-                    object[] TestCase<T>(ConstructorInfo constructorInfo, params (int Index, string Name)[] mappings)
-                    {
-                        var constructorParameters = constructorInfo.GetParameters();
-                        var keyValuePairs = mappings.Select(
-                                kvp => new KeyValuePair<ParameterInfo, PropertyInfo>(constructorParameters[kvp.Index], typeof(T).GetProperty(kvp.Name))
-                            )
-                            .ToArray();
-                        return new object[] { constructorInfo, keyValuePairs };
-                    }
-                }
-            }
-
-            [Theory]
-            [MemberData(nameof(Maps_parameters_to_properties_correctly_Data))]
-            public void Maps_parameters_to_properties_correctly<T>(ConstructorInfo constructorInfo, KeyValuePair<ParameterInfo, PropertyInfo>[] mappings)
-            {
-                // Act
-                var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
-
-                // Assert
-                parameterInfoMap.Should().NotBeEmpty();
-
-                parameterInfoMap.Should().HaveCount(mappings.Length, because: "that is the number of parameters in the constructor which must be mapped");
-                
-                foreach (var (parameter, property) in mappings)
-                {
-                    parameterInfoMap.Should().ContainKey(parameter, because: "the parameter should be mapped");
-                    parameterInfoMap[parameter].Should().BeSameAs(property, because: "the property should be mapped to the parameter");
-                }
-            }
-
             [Theory]
             [AutoData]
             internal void NAME(TypeWithConstructorWithSwappedConstructorProperty instance)
@@ -635,6 +809,99 @@ namespace Typesafe.With.Tests
                 result.Should().NotBeNull();
                 result.Name.Should().BeEquivalentTo(newValue, because: "that is the value given via With");
             }
+
+            internal class TypeWithConstructor
+            {
+                public string Name { get; set; }
+                public int Age { get; set; }
+
+                private int _count = 0;
+
+                private bool _isAsdult;
+                public bool IsAdult
+                {
+                    get
+                    {
+                        if (_count > 1)
+                        {
+                            throw new Exception("IsAdult count exceeded");
+                        }
+
+                        _count++;
+                        return _isAsdult;
+                    }
+                    set
+                    {
+                        _isAsdult = value;
+                    }
+                }
+
+                public TypeWithConstructor(string name, bool isAdult)
+                {
+                    Name = name;
+                    IsAdult = isAdult;
+                }
+            }
+            
+            [Theory, AutoData]
+            internal void Does_not_copy_properties_if_set_via_constructor(TypeWithConstructor source, int newAge)
+            {
+                // Act
+                Func<TypeWithConstructor> act = () => source.With(a => a.Age, newAge);
+
+                // Assert
+                var result = act.Should().NotThrow(because: "the IsAdult property is only accessed once").Subject;
+                
+                result.Should().NotBeNull();
+                result.Name.Should().BeEquivalentTo(source.Name, because: "the property has not been changed");
+                result.Age.Should().Be(newAge, because: "that is the value given via With");
+                result.IsAdult.Should().BeFalse(because: "the property has not been changed");
+            }
+            
+            internal class TypeWithPropertySetter
+            {
+                private int _nameCount = 0;
+                private string _name;
+                public string Name
+                {
+                    get
+                    {
+                        if (_nameCount > 1)
+                        {
+                            throw new Exception("Name count exceeded");
+                        }
+
+                        _nameCount++;
+                        return _name;
+                    }
+                    set
+                    {
+                        _name = value;
+                    }
+                }
+
+                public int Age { get; set; }
+                public bool IsAdult { get; set; }
+
+                public TypeWithPropertySetter(bool isAdult)
+                {
+                    IsAdult = isAdult;
+                }
+            }
+            
+            [Theory, AutoData]
+            internal void Does_not_copy_properties_if_set_via_property(TypeWithPropertySetter source, string newName)
+            {
+                // Act
+                Func<TypeWithPropertySetter> act = () => source.With(a => a.Name, newName);
+
+                // Assert
+                var result = act.Should().NotThrow(because: "the Name property is only accessed once").Subject;
+                result.Should().NotBeNull();
+                result.Name.Should().BeEquivalentTo(newName, because: "that is the value given via With");
+                result.Age.Should().Be(source.Age, because: "the property has not been changed");
+                result.IsAdult.Should().BeFalse(because: "the property has not been changed");
+            }
         }
 
         public class MemberAccess
@@ -1077,7 +1344,6 @@ namespace Typesafe.With.Tests
                 result.Value.Should().Be(expectedValue);
             }
 
-            // ReSharper disable once InconsistentNaming
             public static IEnumerable<object[]> With_works_with_any_type_Data
             {
                 get

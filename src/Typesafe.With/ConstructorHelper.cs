@@ -206,6 +206,7 @@ namespace Typesafe.With
                     else if (nextInstruction?.OpCode == OpCodes.Stfld)
                     {
                         var backingFieldPattern = new Regex("<(.+)>k__BackingField", RegexOptions.Compiled);
+                        var primaryConstructorFieldPattern = new Regex("<(.+)>P", RegexOptions.Compiled);
 
                         if (nextInstruction.Operand is FieldInfo fieldInfo)
                         {
@@ -218,6 +219,48 @@ namespace Typesafe.With
                                     var property = allProperties.Single(p => p.Name == propertyName);
 
                                     map.Add(param, property);
+                                }
+                                else if (primaryConstructorFieldPattern.IsMatch(fieldInfo.Name))
+                                {
+                                    var propertyName = primaryConstructorFieldPattern.Match(fieldInfo.Name).Groups[1].Value;
+
+                                    var firstOrDefault = allProperties
+                                        .Where(
+                                            p =>
+                                            {
+                                                if (p.GetMethod == null) return false;
+                                                
+                                                var getterInstructions = p.GetMethod.GetInstructions();
+                                                
+                                                if (getterInstructions.Count == 3) // Simple property
+                                                {
+                                                    // A simple property follows this pattern:
+                                                    // ldarg.0
+                                                    // ldfld '<name>P'
+                                                    // ret
+                                                    
+                                                    var loadsArg0 = getterInstructions[0].OpCode == OpCodes.Ldarg_0;
+                                                    var loadsField = getterInstructions[1].OpCode == OpCodes.Ldfld;
+                                                    var returns = getterInstructions[2].OpCode == OpCodes.Ret;
+
+                                                    if (loadsArg0 && loadsField && returns)
+                                                    {
+                                                        // Next, verify that the field is the same as the one we're looking for
+                                                        if (getterInstructions[1].Operand is FieldInfo loadedField)
+                                                        {
+                                                            return loadedField == fieldInfo;
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                return false;
+                                            })
+                                        .FirstOrDefault();
+                                    
+                                    if (firstOrDefault != null)
+                                    {
+                                        map.Add(param, firstOrDefault);
+                                    }
                                 }
                             }
 
