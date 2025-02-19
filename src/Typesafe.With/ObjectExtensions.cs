@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Typesafe.With.Tests")]
+[assembly: InternalsVisibleTo("Typesafe.Sandbox")]
 
 namespace Typesafe.With
 {

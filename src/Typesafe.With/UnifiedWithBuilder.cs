@@ -21,8 +21,10 @@ namespace Typesafe.With
 
             var valueResolver = new DependentValueResolver<T>(instance);
 
+            var parameter2PropertyMap = ConstructorHelper.CreateParameterInfoMap(_constructorInfo);
+            
             // 1. Construct instance of T (and set properties via constructor)
-            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
+            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver, parameter2PropertyMap);
             
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
@@ -33,7 +35,7 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
+            var copyProperties = GetCopyProperties(properties, constructedInstance, parameter2PropertyMap);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;
@@ -43,10 +45,12 @@ namespace Typesafe.With
             TInstance instance,
             Dictionary<PropertyInfo, object> newProperties,
             ConstructorInfo constructorInfo,
-            DependentValueResolver<TInstance> dependentValueResolver)
+            DependentValueResolver<TInstance> dependentValueResolver,
+            Dictionary<ParameterInfo, PropertyInfo> parameter2PropertyMap
+        )
         {
             var remainingProperties = new Dictionary<PropertyInfo, object>(newProperties, new ConstructorHelper.PropertyMetadataTokenEqualityComparer());
-            var parameters = BuildParameters(remainingProperties, constructorInfo, instance, newProperties, dependentValueResolver);
+            var parameters = BuildParameters(remainingProperties, constructorInfo, instance, newProperties, dependentValueResolver, parameter2PropertyMap);
 
             var constructedInstance = constructorInfo.Invoke(parameters) is TInstance castedInstance
                 ? castedInstance
@@ -60,11 +64,12 @@ namespace Typesafe.With
             ConstructorInfo constructorInfo,
             TInstance instance,
             Dictionary<PropertyInfo, object> newProperties,
-            DependentValueResolver<TInstance> dependentValueResolver)
+            DependentValueResolver<TInstance> dependentValueResolver,
+            Dictionary<ParameterInfo, PropertyInfo> parameter2PropertyMap
+        )
         {
             var resolvedConstructorParameters = new List<object>();
             var constructorParameters = constructorInfo.GetParameters();
-            var parameter2PropertyMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
             foreach (var parameter in constructorParameters)
             {
@@ -140,37 +145,26 @@ namespace Typesafe.With
         }
 
         private static IEnumerable<PropertyInfo> GetCopyProperties(
-            ConstructorInfo constructorInfo,
             Dictionary<PropertyInfo, object> excludeProperties,
-            T instance
+            T instance,
+            Dictionary<ParameterInfo, PropertyInfo> parameterInfoMap
         )
         {
-            var p = excludeProperties.ToDictionary(kvp => kvp.Key.Name.ToParameterCase(), kvp => kvp.Value);
-
             var publicProperties = TypeUtils.GetProperties(instance);
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))
             {
-                publicProperties.TryGetValue(parameter, out var x);
                 publicProperties.Remove(parameter);
             }
             
             // Remove properties set via constructor
-            foreach (var parameter in GetConstructorParameterNames())
+            foreach (var kvp in parameterInfoMap)
             {
-                // publicProperties.Remove(parameter);
+                publicProperties.Remove(kvp.Value);
             }
-
-            return publicProperties.Values.Where(info => info.CanWrite);
             
-            IEnumerable<string> GetConstructorParameterNames()
-            {
-                return constructorInfo
-                    .GetParameters()
-                    .Select(parameterInfo => parameterInfo.Name)
-                    .ToList();
-            }
+            return publicProperties.Values.Where(info => info.CanWrite);
         }
 
         private static T CopyProperties(T source, T destination, IEnumerable<PropertyInfo> properties)

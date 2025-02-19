@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 using Typesafe.With;
 
 namespace Typesafe.Sandbox
@@ -70,11 +72,39 @@ namespace Typesafe.Sandbox
             set => _name = value;
         }
     }
+
+    class TT(int age)
+    {
+        
+    }
+    class TestBase(string name, int age) : TT(age)
+    {
+        
+    }
+
+    class Test(string name) : TestBase(name, 10)
+    {
+        public string Name => name;
+    }
+    
+    class Test1 : TestBase
+    {
+        public string Name { get; }
+        
+        public Test1(string name) : base(name, 10)
+        {
+            Name = name;
+        }
+    }
     
     class Program
     {
         static void Main(string[] args)
         {
+            {
+                var constructorInfo = typeof(Test).GetConstructors().First();
+                var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+            }
             {
                 IStudent harry = new HogwartsStudents { Name = "Harry", House = House.Gryffindor }; 
                 IStudent draco = harry.With(p => p.Name, "Draco");

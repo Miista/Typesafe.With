@@ -7,38 +7,35 @@ namespace Typesafe.With
 {
     internal class ConstructorParameterMap : Dictionary<PropertyInfo, PropertyInfo>, IDictionary<PropertyInfo, PropertyInfo>
     {
-        private readonly Type _type;
+        private readonly InterfaceMapping[] _interfaceMappings;
+
+        private Dictionary<MethodInfo, PropertyInfo> PropertiesByGetMethod => Keys.ToDictionary(p => p.GetMethod);
 
         public ConstructorParameterMap(Dictionary<PropertyInfo, PropertyInfo> values, Type type) : base(values, new ConstructorHelper.PropertyMetadataTokenEqualityComparer())
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
-            
-            _type = type ?? throw new ArgumentNullException(nameof(type));
+            if (type == null) throw new ArgumentNullException(nameof(type));
+
+            _interfaceMappings = type.GetInterfaces().Select(type.GetInterfaceMap).ToArray();
         }
 
         public new bool TryGetValue(PropertyInfo key, out PropertyInfo value)
         {
-            if (base.TryGetValue(key, out value))
-            {
-                return true;
-            }
+            if (base.TryGetValue(key, out value)) return true;
 
             // Resolve via interface mapping
-            var interfaceMappings = _type.GetInterfaces().Select(i => _type.GetInterfaceMap(i)).ToArray();
-            
-            for (var i = 0; i < interfaceMappings.Length; i++)
+            foreach (var interfaceMapping in _interfaceMappings)
             {
-                var interfaceMapping = interfaceMappings[i];
-
                 // We first find the get method in the interface
-                var interfaceGetMethod = interfaceMapping.InterfaceMethods.FirstOrDefault(m => m.MetadataToken == key.GetMethod.MetadataToken);
-
-                if (interfaceGetMethod == null) continue;
-
+                var indexOfInterfaceMethod = Array.FindIndex(interfaceMapping.InterfaceMethods, m => m.MetadataToken == key.GetMethod.MetadataToken);
+                
+                if (indexOfInterfaceMethod == -1) continue; // We found nothing
+                
                 // Next, we find the target method in the interface mapping
-                var indexOfInterfaceMethod = Array.IndexOf(interfaceMappings[i].InterfaceMethods, interfaceGetMethod);
-                var targetMethod = interfaceMappings[i].TargetMethods[indexOfInterfaceMethod];
-                    
+                var targetMethod = interfaceMapping.TargetMethods[indexOfInterfaceMethod];
+                
+                // This assumes that every property has a get method.
+                // This is reasonable because if the property does not have a get method, it cannot be called in With.
                 if (PropertiesByGetMethod.TryGetValue(targetMethod, out var matchingProperty))
                 {
                     value = matchingProperty;
@@ -58,9 +55,6 @@ namespace Typesafe.With
 
             return false;
         }
-
-
-        private Dictionary<MethodInfo, PropertyInfo> PropertiesByGetMethod => Keys.ToDictionary(p => p.GetMethod);
     }
     
 }
