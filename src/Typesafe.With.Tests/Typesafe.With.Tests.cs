@@ -20,7 +20,7 @@ namespace Typesafe.With.Tests
 {
     public class Tests
     {
-        public class ConstructorHelperTests
+        public class ConstructorHelper
         {
             public class ExplicitConstructors
             {
@@ -89,7 +89,7 @@ namespace Typesafe.With.Tests
                 )
                 {
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().NotBeEmpty();
@@ -194,7 +194,7 @@ namespace Typesafe.With.Tests
                 public void Supports_primary_constructors(ConstructorInfo constructorInfo, KeyValuePair<ParameterInfo, PropertyInfo>[] mappings)
                 {
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(mappings.Length, because: "that is the number of parameters in the constructor which must be mapped");
@@ -220,7 +220,7 @@ namespace Typesafe.With.Tests
                     var constructorInfo = typeof(ConstructorWithSingleParameter).GetConstructors().First();
 
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(1, because: "there is exactly one constructor parameter");
@@ -238,7 +238,7 @@ namespace Typesafe.With.Tests
                     var constructorInfo = typeof(ExplicitConstructorInheritingPrimaryConstructor).GetConstructors().First();
 
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(1, because: "there is exactly one constructor parameter");
@@ -257,7 +257,7 @@ namespace Typesafe.With.Tests
                     var constructorInfo = typeof(PrimaryConstructorInheritingPrimaryConstructor).GetConstructors().First();
 
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(2, because: "there is exactly two constructor parameters");
@@ -275,7 +275,7 @@ namespace Typesafe.With.Tests
                     var constructorInfo = typeof(TypeWithSynthesizedProperties).GetConstructors().First();
 
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(0, because: "there is no constructor parameters");
@@ -296,50 +296,12 @@ namespace Typesafe.With.Tests
                     var constructorInfo = typeof(TypeWithSynthesizedProperties).GetConstructors().First();
 
                     // Act
-                    var parameterInfoMap = ConstructorHelper.CreateParameterInfoMap(constructorInfo);
+                    var parameterInfoMap = With.ConstructorHelper.CreateParameterInfoMap(constructorInfo);
 
                     // Assert
                     parameterInfoMap.Should().HaveCount(0, because: "there is no constructor parameters");
                 }
             }
-        }
-        
-        public class ConstructorParameterMapTests
-        {
-            internal class TypeWithConstructorWithSwappedConstructorProperty
-            {
-                public string Prop1 { get; set; }
-                public int Prop2 { get; set; }
-
-                public TypeWithConstructorWithSwappedConstructorProperty(int prop2, string prop1)
-                {
-                    Prop2 = prop2;
-                    Prop1 = prop1;
-                }
-            }
-            
-            [Theory]
-            [AutoData]
-            internal void NAME(TypeWithConstructorWithSwappedConstructorProperty instance)
-            {
-                // Act
-                var result = instance.With(i => i.Prop1, "a");
-
-                // Assert
-                result.Prop1.Should().Be("a");
-                result.Prop2.Should().Be(instance.Prop2);
-            }
-            
-            // [Theory]
-            // [AutoData]
-            // internal void NAME1(TypeWithConstructorWithConstructorPropertyNameMismatch instance)
-            // {
-            //     // Act
-            //     var result = instance.With(i => i.DifferentName, "a");
-            //
-            //     // Assert
-            //     result.DifferentName.Should().Be("a");
-            // }
         }
         
         public class Errors
