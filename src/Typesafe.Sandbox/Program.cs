@@ -116,15 +116,18 @@ namespace Typesafe.Sandbox
              * 1. Deconstruct method
              * 2. Implement IEquatable<T> where T is the record type
              * 3. Equality operators: == and !=
-             * 4. In case of record classes:
-             * 4a. A compiler generated clone method
-             * 4b. A compiler generated EqualityContract property
+             * 4. PrintMembers method
+             * 5. In case of record classes:
+             * 5a. A compiler generated clone method
+             * 5b. A compiler generated EqualityContract property
              */
             
             // 1. Deconstruct method
             var deconstructMethod = type.GetMethod("Deconstruct", BindingFlags.Instance | BindingFlags.Public);
             
             if (deconstructMethod == null) return false;
+            
+            if (deconstructMethod.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
             
             // 2. Implement IEquatable<T> where T is the record type
             var genericEquatableInterface = typeof(IEquatable<>).MakeGenericType(type);
@@ -136,21 +139,37 @@ namespace Typesafe.Sandbox
             var equalityOperator = type.GetMethod("op_Equality", BindingFlags.Static | BindingFlags.Public);
             var inequalityOperator = type.GetMethod("op_Inequality", BindingFlags.Static | BindingFlags.Public);
             
-            if (equalityOperator == null || inequalityOperator == null) return false;
+            if (equalityOperator == null || equalityOperator.GetParameters()[0].ParameterType != typeof(T) || equalityOperator.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
+            
+            if (inequalityOperator == null || inequalityOperator.GetParameters()[0].ParameterType != typeof(T) || inequalityOperator.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
 
-            // 4. In case of record classes:
+            // 4. PrintMembers method
+            var printMembersMethod = type.GetMethod("PrintMembers", BindingFlags.Instance | BindingFlags.NonPublic);
+            
+            if (printMembersMethod == null) return false;
+
+            if (printMembersMethod.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
+            
+            // 5. In case of record classes:
             if (type.IsClass)
             {
-                // 4a. A compiler generated clone method
+                // 5a. A compiler generated clone method
                 // Structs do not need the clone method. Simply assigning the struct to a new variable, creates a copy.
                 var cloneMethod = type.GetMethod("<Clone>$", BindingFlags.Instance | BindingFlags.Public);
 
                 if (cloneMethod == null) return false;
+
+                // The <Clone>$ method should return the same type as the record class
+                if (cloneMethod.ReturnType != typeof(T)) return false;
+
+                if (cloneMethod.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
                 
-                // 4b. A compiler generated EqualityContract property
+                // 5b. A compiler generated EqualityContract property
                 var equalityContractProperty = type.GetProperty("EqualityContract", BindingFlags.Instance | BindingFlags.NonPublic);
                 
                 if (equalityContractProperty == null) return false;
+
+                if (equalityContractProperty.GetCustomAttribute<CompilerGeneratedAttribute>() == null) return false;
             }
 
             return true;
@@ -186,6 +205,38 @@ namespace Typesafe.Sandbox
             }
         }
         
+        static T With2<T, TProperty>(T instance, Expression<Func<T, TProperty>> picker, Expression<Func<TProperty, TProperty>> value)
+        {
+            if (!IsRecord<T>())
+            {
+                return instance.With(picker, value);
+            }
+            else
+            {
+                T newInstance;
+                var propertyInfo = picker.GetProperty() ?? throw new Exception();
+                var propertyInfoSetMethod = propertyInfo.SetMethod ?? throw new Exception();
+                
+                if (typeof(T).IsValueType)
+                {
+                    newInstance = instance;
+                    propertyInfoSetMethod.Invoke(newInstance, new object[] { value });
+                }
+                else
+                {
+                    var methodInfo = typeof(T).GetMethod("<Clone>$") ?? throw new Exception();
+                    
+                    newInstance = (T) methodInfo.Invoke(instance, new object[0]);
+                    var currentValue = picker.Compile().Invoke(instance);
+                    var newValue = value.Compile().Invoke(currentValue);
+                    propertyInfoSetMethod.Invoke(newInstance, new object[] { newValue });
+                    
+                }
+                
+                return newInstance;
+            }
+        }
+        
         static void Main(string[] args)
         {
             {
@@ -204,7 +255,7 @@ namespace Typesafe.Sandbox
                 Console.WriteLine(IsRecord<RecordClass>());
                 Console.WriteLine(IsRecord<RecordStruct>());
                 Console.WriteLine(IsRecord<RecordReadonlyStruct>());
-                With1<RecordClass, string>(record1, x => x.Name, "Søren");
+                var t = With2<RecordClass, string>(record1, x => x.Name, s => $"{s}Søren");
                 With1<RecordStruct, string>(newRecordStruct, x => x.Name, "Søren");
                 With1<RecordReadonlyStruct, string>(readonlyStruct, x => x.Name, "Søren");
                 
