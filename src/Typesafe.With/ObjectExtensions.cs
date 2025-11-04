@@ -68,7 +68,9 @@ namespace Typesafe.With
             var withMethod = typeof(ObjectExtensions)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .FirstOrDefault(m =>
-                    m.Name == nameof(With) && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
+                    m.Name == nameof(With)
+                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
+                    && m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
                 ) ?? throw new Exception();
 
             var root = members.Dequeue();

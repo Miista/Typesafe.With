@@ -446,6 +446,26 @@ namespace Typesafe.Sandbox
         static void Main(string[] args)
         {
             {
+                var propertyType = typeof(int);
+                var instanceType = typeof(string);
+                var funcType = typeof(Func<,>);
+                var propertyPickerType = typeof(Expression<>).MakeGenericType(funcType.MakeGenericType(instanceType, propertyType));
+                var propertyValueFactoryType = typeof(Expression<>).MakeGenericType(funcType.MakeGenericType(propertyType, propertyType));
+                var method = typeof(ObjectExtensions)
+                    .GetMethod(
+                        nameof(ObjectExtensions.With),
+                        //BindingFlags.Public | BindingFlags.Static,
+                        new[] { instanceType, propertyPickerType, propertyValueFactoryType }
+                    );
+                var methodInfo = typeof(ObjectExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == nameof(ObjectExtensions.With))
+                    .Where(m => m.GetParameters()[1] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>))
+                    .Where(m => m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>))
+                    .FirstOrDefault();
+                Console.WriteLine(methodInfo);
+            }
+            
+            {
                 // Nested update
                 var child1 = new Child { Name = "Harry" };
                 var parent = new Parent { Child = child1 };
