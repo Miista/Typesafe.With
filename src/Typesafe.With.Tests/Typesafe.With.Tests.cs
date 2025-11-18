@@ -185,7 +185,7 @@ namespace Typesafe.With.Tests
                 // Assert
                 act.Should().Throw<Exception>(because: "the expression represents a nested property");
             }
-            
+
             [Theory, AutoData]
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith(TypeWithNestedProperty instance, string newValue)
             {
@@ -195,7 +195,22 @@ namespace Typesafe.With.Tests
                 // Assert
                 act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
             }
-            
+
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory(TypeWithNestedProperty instance, string newValue)
+            {
+                // Arrange
+                var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
+
+                // Act
+                Func<TypeWithNestedProperty> act = () => instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
+                var result = act();
+                result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
+            }
+
             [Theory, AutoData]
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_1(TypeWithNestedProperty instance, string newValue)
             {
@@ -205,7 +220,7 @@ namespace Typesafe.With.Tests
                 // Assert
                 result.Nested.Text.Should().Be(newValue, because: "NestedWith supports nested properties");
             }
-            
+
             internal class TypeWithPrivateConstructor
             {
                 public string Text { get; }

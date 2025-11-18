@@ -60,6 +60,19 @@ namespace Typesafe.With
             var withExpression = NestedWithQueue1(propertyPicker, _ => propertyValue);
             return withExpression.Compile().Invoke(instance);
         }
+        
+        public static T NestedWith<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+
+            var withExpression = NestedWithQueue1(propertyPicker, propertyValueFactory);
+            return withExpression.Compile().Invoke(instance);
+        }
 
         private static Expression<Func<T, T>> NestedWithQueue1<T, TValue>(Expression<Func<T, TValue>> picker, Expression<Func<TValue, TValue>> value)
         {
