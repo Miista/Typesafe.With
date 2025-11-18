@@ -199,15 +199,23 @@ namespace Typesafe.With.Tests
             [Theory, AutoData]
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory(TypeWithNestedProperty instance, string newValue)
             {
+                // Act
+                Action act = () => instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
+            }
+            
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory_1(TypeWithNestedProperty instance, string newValue)
+            {
                 // Arrange
                 var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
 
                 // Act
-                Func<TypeWithNestedProperty> act = () => instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+                var result = instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
 
                 // Assert
-                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
-                var result = act();
                 result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
             }
 

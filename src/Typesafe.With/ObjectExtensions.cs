@@ -9,13 +9,46 @@ namespace Typesafe.With
     public static class ObjectExtensions
     {
         private static readonly MethodInfo WithMethod = typeof(ObjectExtensions)
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
             .FirstOrDefault(m =>
-                m.Name == nameof(With)
+                m.Name == nameof(InternalWith)
                 && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
                 && m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
             ) ?? throw new Exception();
 
+        private static T InternalWith<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+
+            var propertyName = propertyPicker.GetPropertyName();
+            var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
+
+            Validate(propertyName, instance);
+
+            var constructor = TypeUtils.GetSuitableConstructor(instance);
+            var builder = new UnifiedWithBuilder<T>(constructor);
+
+            return builder.Construct(instance, properties);
+        }
+        
+        private static T InternalWithNested<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+
+            var withExpression = NestedWithQueue1(propertyPicker, propertyValueFactory);
+            return withExpression.Compile().Invoke(instance);
+        }
+        
         public static T With<T, TProperty>(
             this T instance,
             Expression<Func<T, TProperty>> propertyPicker,
@@ -25,6 +58,11 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
+            if (propertyPicker.IsNested())
+            {
+                return InternalWithNested(instance, propertyPicker, propertyValueFactory);
+            }
+            
             var propertyName = propertyPicker.GetPropertyName();
             var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
 
@@ -45,6 +83,11 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
+            if (propertyPicker.IsNested())
+            {
+                return InternalWithNested(instance, propertyPicker, _ => propertyValue);
+            }
+            
             var propertyName = propertyPicker.GetPropertyName();
             var properties = new Dictionary<string, object> { { propertyName, propertyValue } };
 
