@@ -80,7 +80,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_instance_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
                 {
                     // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).NestedWith(_ => _.SettableProperty, newValue);
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, newValue);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
@@ -100,7 +100,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_propertyPicker_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
                 {
                     // Arrange + Act
-                    Action act = () => instance.NestedWith(null, newValue);
+                    Action act = () => instance.With(null, newValue);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
@@ -120,7 +120,7 @@ namespace Typesafe.With.Tests
                 internal void Does_not_throw_exception_if_propertyValue_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance)
                 {
                     // Arrange + Act
-                    Action act = () => instance.NestedWith(_ => _.SettableProperty, (string) null);
+                    Action act = () => instance.With(_ => _.SettableProperty, (string) null);
                 
                     // Assert
                     act.Should().NotThrow<ArgumentNullException>(because: "the new value is allowed to be null");
@@ -190,7 +190,7 @@ namespace Typesafe.With.Tests
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                Action act = () => instance.NestedWith(_ => _.Nested.Text, newValue);
+                Action act = () => instance.With(_ => _.Nested.Text, newValue);
 
                 // Assert
                 act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
@@ -200,7 +200,7 @@ namespace Typesafe.With.Tests
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                Action act = () => instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+                Action act = () => instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
 
                 // Assert
                 act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
@@ -213,7 +213,7 @@ namespace Typesafe.With.Tests
                 var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
 
                 // Act
-                var result = instance.NestedWith(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+                var result = instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
 
                 // Assert
                 result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
@@ -223,7 +223,7 @@ namespace Typesafe.With.Tests
             internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_1(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                var result = instance.NestedWith(_ => _.Nested.Text, newValue);
+                var result = instance.With(_ => _.Nested.Text, newValue);
 
                 // Assert
                 result.Nested.Text.Should().Be(newValue, because: "NestedWith supports nested properties");

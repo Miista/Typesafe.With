@@ -560,7 +560,7 @@ namespace Typesafe.Sandbox
                 var theExpr2 = Expr<Parent, Child>(p => p.Child, Expr<Child, string>(chi => chi.Name, "Ron"));
                 Console.WriteLine("Expr (expression): " + theExpr2.Compile().Invoke(parent).Child.Name);
                 
-                var child = parent.NestedWith(p => p.Child.Name,"Draco");
+                var child = parent.With(p => p.Child.Name,"Draco");
                 Console.WriteLine("NestedWith (before): " + parent.Child.Name);
                 Console.WriteLine("NestedWith (after): " + child.Child.Name);
             }

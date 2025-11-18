@@ -48,82 +48,6 @@ namespace Typesafe.With
             var withExpression = NestedWithQueue1(propertyPicker, propertyValueFactory);
             return withExpression.Compile().Invoke(instance);
         }
-        
-        public static T With<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            Expression<Func<TProperty, TProperty>> propertyValueFactory
-        )
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            if (propertyPicker.IsNested())
-            {
-                return InternalWithNested(instance, propertyPicker, propertyValueFactory);
-            }
-            
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
-
-            Validate(propertyName, instance);
-
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-
-            return builder.Construct(instance, properties);
-        }
-
-        public static T With<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            TProperty propertyValue
-        )
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            if (propertyPicker.IsNested())
-            {
-                return InternalWithNested(instance, propertyPicker, _ => propertyValue);
-            }
-            
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object> { { propertyName, propertyValue } };
-
-            Validate(propertyName, instance);
-
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-
-            return builder.Construct(instance, properties);
-        }
-
-        public static T NestedWith<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            TProperty propertyValue
-        )
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            var withExpression = NestedWithQueue1(propertyPicker, _ => propertyValue);
-            return withExpression.Compile().Invoke(instance);
-        }
-        
-        public static T NestedWith<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            Expression<Func<TProperty, TProperty>> propertyValueFactory
-        )
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            var withExpression = NestedWithQueue1(propertyPicker, propertyValueFactory);
-            return withExpression.Compile().Invoke(instance);
-        }
 
         private static Expression<Func<T, T>> NestedWithQueue1<T, TValue>(Expression<Func<T, TValue>> picker, Expression<Func<TValue, TValue>> value)
         {
@@ -179,6 +103,46 @@ namespace Typesafe.With
             }
         }
 
+        public static T With<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            TProperty propertyValue
+        ) => With(instance, propertyPicker, _ => propertyValue);
+
+        public static T With<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+
+            if (propertyPicker.IsNested())
+            {
+                return InternalWithNested(instance, propertyPicker, propertyValueFactory);
+            }
+            
+            return InternalWith1(instance, propertyPicker, propertyValueFactory);
+        }
+
+        private static T InternalWith1<T, TProperty>(
+            T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            var propertyName = propertyPicker.GetPropertyName();
+            var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
+
+            Validate(propertyName, instance);
+
+            var constructor = TypeUtils.GetSuitableConstructor(instance);
+            var builder = new UnifiedWithBuilder<T>(constructor);
+
+            return builder.Construct(instance, properties);
+        }
+
         private static void Validate<T>(string propertyName, T instance)
         {
             // Can we set the property via constructor?
@@ -202,7 +166,6 @@ namespace Typesafe.With
             return TypeUtils.GetPropertyDictionary(instance).TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
         }
 
-        //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
         private static bool HasConstructorParameter<T>(string propertyName, T instance)
         {
             var constructorParameters = TypeUtils.GetSuitableConstructor(instance).GetParameters();
