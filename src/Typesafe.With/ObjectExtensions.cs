@@ -8,6 +8,14 @@ namespace Typesafe.With
 {
     public static class ObjectExtensions
     {
+        private static readonly MethodInfo WithMethod = typeof(ObjectExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(m =>
+                m.Name == nameof(With)
+                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
+                && m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
+            ) ?? throw new Exception();
+
         public static T With<T, TProperty>(
             this T instance,
             Expression<Func<T, TProperty>> propertyPicker,
@@ -78,14 +86,6 @@ namespace Typesafe.With
         {
             var members = GetMembers();
 
-            var withMethod = typeof(ObjectExtensions)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .FirstOrDefault(m =>
-                    m.Name == nameof(With)
-                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-                    && m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-                ) ?? throw new Exception();
-
             var root = members.Dequeue();
 
             var rootExpression = BuildLambda(root, 0, value);
@@ -102,7 +102,7 @@ namespace Typesafe.With
 
             LambdaExpression BuildLambda(MemberExpression current, int i, Expression propertyValue)
             {
-                var genericWithMethod = withMethod.MakeGenericMethod(current.Expression.Type, current.Type);
+                var genericWithMethod = WithMethod.MakeGenericMethod(current.Expression.Type, current.Type);
                 var memberAccessParam = Expression.Parameter(current.Expression.Type, $"c1_{i}");
                 var instanceParam = Expression.Parameter(current.Expression.Type, $"c_{i}");
                 var withCall = Expression.Call(
