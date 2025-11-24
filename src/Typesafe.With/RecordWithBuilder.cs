@@ -26,7 +26,10 @@ namespace Typesafe.With
             if (typeof(T).IsValueType)
             {
                 newInstance = instance;
+                propertyInfo.SetValue(newInstance, newValue);
                 propertyInfoSetMethod.Invoke(newInstance, [newValue]);
+                propertyInfo.SetValue(instance, newValue);
+                propertyInfoSetMethod.Invoke(instance, [newValue]);
             }
             else
             {

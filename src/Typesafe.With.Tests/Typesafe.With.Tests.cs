@@ -18,7 +18,7 @@ using Xunit;
 // ReSharper disable once CheckNamespace
 namespace Typesafe.With.Tests
 {
-    public class Tests
+    public partial class Tests
     {
         public class ConstructorHelper
         {

@@ -256,9 +256,13 @@ namespace Typesafe.Sandbox
                 Console.WriteLine(IsRecord<RecordStruct>());
                 Console.WriteLine(IsRecord<RecordReadonlyStruct>());
                 var t = With2<RecordClass, string>(record1, x => x.Name, s => $"{s}Søren");
+                var t1 = With1<RecordClass, string>(record1, x => x.Name, "Test");
                 With1<RecordStruct, string>(newRecordStruct, x => x.Name, "Søren");
                 With1<RecordReadonlyStruct, string>(readonlyStruct, x => x.Name, "Søren");
-                
+                var @struct = newRecordStruct with { Name = "Test" };
+                var with1 = With1(newRecordStruct, x => x.Name, "Test");
+                with1.Name = "h";
+                Console.WriteLine(@struct == with1);
                 var with = record1.With(x => x.Age, 15);
                 Console.WriteLine(record1);
             }
