@@ -28,7 +28,7 @@ namespace Typesafe.With
         }
 
         private static T InternalWithNested<T, TProperty>(
-            this T instance,
+            T instance,
             Expression<Func<T, TProperty>> propertyPicker,
             Expression<Func<TProperty, TProperty>> propertyValueFactory
         )
@@ -52,12 +52,9 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            if (propertyPicker.IsNested())
-            {
-                return InternalWithNested(instance, propertyPicker, propertyValueFactory);
-            }
-            
-            return InternalWith(instance, propertyPicker, propertyValueFactory);
+            return propertyPicker.IsNested()
+                ? InternalWithNested(instance, propertyPicker, propertyValueFactory)
+                : InternalWith(instance, propertyPicker, propertyValueFactory);
         }
 
         private static void Validate<T>(string propertyName, T instance)
