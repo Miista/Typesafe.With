@@ -27,7 +27,7 @@ namespace Typesafe.With
             var nestedWithExpression = BuildLambda(
                 memberChain[0],
                 depth: 0,
-                propertyValue: propertyValueFactory
+                propertyValueFactory: propertyValueFactory
             );
 
             // Build chain from leaf to root
@@ -59,22 +59,25 @@ namespace Typesafe.With
             return members;
         }
 
-        private static LambdaExpression BuildLambda(MemberExpression current, int depth, Expression propertyValue)
+        private static LambdaExpression BuildLambda(MemberExpression member, int depth, Expression propertyValueFactory)
         {
-            var genericWithMethod = WithMethod.MakeGenericMethod(current.Expression.Type, current.Type);
-            var memberAccessParam = Expression.Parameter(current.Expression.Type, $"c1_{depth}");
-            var instanceParam = Expression.Parameter(current.Expression.Type, $"c_{depth}");
-            var withCall = Expression.Call(
-                genericWithMethod,
-                instanceParam,
-                Expression.Lambda(
-                    Expression.MakeMemberAccess(memberAccessParam, current.Member),
-                    memberAccessParam
-                ),
-                propertyValue
+            var internalWithMethod = WithMethod.MakeGenericMethod(member.Expression.Type, member.Type);
+            var propertyPickerParameter = Expression.Parameter(member.Expression.Type, $"c1_{depth}");
+            var instanceParameter = Expression.Parameter(member.Expression.Type, $"c_{depth}");
+
+            var propertyPicker = Expression.Lambda(
+                Expression.MakeMemberAccess(propertyPickerParameter, member.Member),
+                propertyPickerParameter
+            );
+            
+            var internalWithCall = Expression.Call(
+                internalWithMethod,
+                instanceParameter,
+                propertyPicker,
+                propertyValueFactory
             );
 
-            return Expression.Lambda(withCall, instanceParam);
+            return Expression.Lambda(internalWithCall, instanceParameter);
         }
     }
 }
