@@ -10,11 +10,11 @@ namespace Typesafe.With
     {
         private static readonly MethodInfo WithMethod = typeof(ObjectExtensions)
             .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-            .FirstOrDefault(m =>
+            .SingleOrDefault(m =>
                 m.Name == nameof(InternalWith)
                 && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
                 && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-            ) ?? throw new Exception();
+            ) ?? throw new InvalidOperationException($"Unable to find suitable method for {nameof(InternalWith)}");
 
         private static T InternalWith<T, TProperty>(
             T instance,
