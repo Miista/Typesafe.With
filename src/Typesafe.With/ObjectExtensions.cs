@@ -42,9 +42,6 @@ namespace Typesafe.With
             Expression<Func<TProperty, TProperty>> propertyValueFactory
         )
         {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
             var nestedWithExpression = BuildNestedWithExpression(propertyPicker, propertyValueFactory);
             return nestedWithExpression.Compile().Invoke(instance);
         }
