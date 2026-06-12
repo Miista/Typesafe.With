@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using AutoFixture;
 using AutoFixture.Xunit2;
 using FluentAssertions;
 using Xunit;
@@ -838,7 +839,83 @@ namespace Typesafe.With.Tests
 
                 public NestedType Nested { get; set; }
             }
+            
+            internal class TypeWithDeeplyNestedProperty
+            {
+                public TypeWithDeeplyNestedProperty Nested { get; set; }
+                public string Text { get; set; }
+            }
 
+            // ReSharper disable once InconsistentNaming
+            public static IEnumerable<object[]> Supports_setting_an_arbitrarily_deeply_nested_property_Data
+            {
+                get
+                {
+                    yield return TestCase(
+                        level: 0,
+                        instance => instance.Text,
+                        instance => instance
+                    );
+                    
+                    yield return TestCase(
+                        level: 1,
+                        instance => instance.Nested.Text,
+                        instance => instance.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 2,
+                        instance => instance.Nested.Nested.Text,
+                        instance => instance.Nested.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 5,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Text,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 10,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Text,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested
+                    );
+                    yield break;
+
+                    object[] TestCase(
+                        int level,
+                        Expression<Func<TypeWithDeeplyNestedProperty, string>> propertyPicker,
+                        Func<TypeWithDeeplyNestedProperty, TypeWithDeeplyNestedProperty> valueGetter
+                    )
+                    {
+                        var fixture = new Fixture().Customize(new TypeWithDeeplyNestedPropertyCustomization(level));
+
+                        var type = fixture.Create<TypeWithDeeplyNestedProperty>();
+                        var value = fixture.Create<string>();
+
+                        return new object[] { level, type, propertyPicker, valueGetter, value };
+                    }
+                }
+            }
+
+            [Theory, MemberData(nameof(Supports_setting_an_arbitrarily_deeply_nested_property_Data))]
+            internal void Supports_setting_an_arbitrarily_deeply_nested_property(
+#pragma warning disable xUnit1026
+                int level,
+#pragma warning restore xUnit1026
+                TypeWithDeeplyNestedProperty instance,
+                Expression<Func<TypeWithDeeplyNestedProperty, string>> expression,
+                Func<TypeWithDeeplyNestedProperty, TypeWithDeeplyNestedProperty> valueGetter,
+                string newValue
+            )
+            {
+                // Act
+                Func<TypeWithDeeplyNestedProperty> act = () => instance.With(expression, newValue);
+
+                // Assert
+                valueGetter(act()).Text.Should().Be(newValue, because: "that is the value set");
+            }
+            
             [Theory, AutoData]
             internal void Supports_setting_a_nested_property(TypeWithNestedProperty instance, string newValue)
             {
@@ -850,7 +927,7 @@ namespace Typesafe.With.Tests
             }
 
             [Theory, AutoData]
-            internal void Supports_setting_a_nested_property_using_value_factory_1(
+            internal void Supports_setting_a_nested_property_using_value_factory(
                 TypeWithNestedProperty instance,
                 string newValue
             )
