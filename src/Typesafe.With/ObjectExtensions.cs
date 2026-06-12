@@ -2,20 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace Typesafe.With
 {
     public static class ObjectExtensions
     {
-        private static readonly MethodInfo WithMethod = typeof(ObjectExtensions)
-            .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-            .SingleOrDefault(m =>
-                m.Name == nameof(InternalWith)
-                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-                && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-            ) ?? throw new InvalidOperationException($"Unable to find suitable method for {nameof(InternalWith)}");
-
         private static T InternalWith<T, TProperty>(
             T instance,
             Expression<Func<T, TProperty>> propertyPicker,
@@ -42,65 +33,8 @@ namespace Typesafe.With
             Expression<Func<TProperty, TProperty>> propertyValueFactory
         )
         {
-            var nestedWithExpression = BuildNestedWithExpression(propertyPicker, propertyValueFactory);
+            var nestedWithExpression = NestedWithExpressionBuilder.Build(propertyPicker, propertyValueFactory);
             return nestedWithExpression.Compile().Invoke(instance);
-        }
-
-        private static Expression<Func<T, T>> BuildNestedWithExpression<T, TValue>(
-            Expression<Func<T, TValue>> propertyPicker,
-            Expression<Func<TValue, TValue>> propertyValueFactory
-        )
-        {
-            var members = GetMembers();
-
-            var root = members.Dequeue();
-
-            var nestedWithExpression = BuildLambda(root, 0, propertyValueFactory);
-
-            var depth = 1;
-            while (members.Count > 0)
-            {
-                var member = members.Dequeue();
-                nestedWithExpression = BuildLambda(member, depth, nestedWithExpression);
-                depth++;
-            }
-
-            return nestedWithExpression as Expression<Func<T, T>>;
-
-            LambdaExpression BuildLambda(MemberExpression current, int i, Expression propertyValue)
-            {
-                var genericWithMethod = WithMethod.MakeGenericMethod(current.Expression.Type, current.Type);
-                var memberAccessParam = Expression.Parameter(current.Expression.Type, $"c1_{i}");
-                var instanceParam = Expression.Parameter(current.Expression.Type, $"c_{i}");
-                var withCall = Expression.Call(
-                    genericWithMethod,
-                    instanceParam, // Instance
-                    Expression.Lambda( // propertyPicker
-                        Expression.MakeMemberAccess(
-                            memberAccessParam,
-                            current.Member
-                        ),
-                        memberAccessParam
-                    ),
-                    propertyValue // propertyValueFactory
-                );
-
-                return Expression.Lambda(withCall, instanceParam);
-            }
-
-            Queue<MemberExpression> GetMembers()
-            {
-                var memberExpressions = new Queue<MemberExpression>();
-                var expr = propertyPicker.Body;
-
-                while (expr is MemberExpression memberExpr)
-                {
-                    memberExpressions.Enqueue(memberExpr);
-                    expr = memberExpr.Expression;
-                }
-
-                return memberExpressions;
-            }
         }
 
         public static T With<T, TProperty>(
