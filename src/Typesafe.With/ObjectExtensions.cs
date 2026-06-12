@@ -45,27 +45,30 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            var withExpression = NestedWithQueue1(propertyPicker, propertyValueFactory);
-            return withExpression.Compile().Invoke(instance);
+            var nestedWithExpression = BuildNestedWithExpression(propertyPicker, propertyValueFactory);
+            return nestedWithExpression.Compile().Invoke(instance);
         }
 
-        private static Expression<Func<T, T>> NestedWithQueue1<T, TValue>(Expression<Func<T, TValue>> picker, Expression<Func<TValue, TValue>> value)
+        private static Expression<Func<T, T>> BuildNestedWithExpression<T, TValue>(
+            Expression<Func<T, TValue>> propertyPicker,
+            Expression<Func<TValue, TValue>> propertyValueFactory
+        )
         {
             var members = GetMembers();
 
             var root = members.Dequeue();
 
-            var rootExpression = BuildLambda(root, 0, value);
+            var nestedWithExpression = BuildLambda(root, 0, propertyValueFactory);
 
-            var n = 1;
+            var depth = 1;
             while (members.Count > 0)
             {
-                var current = members.Dequeue();
-                rootExpression = BuildLambda(current, n, rootExpression);
-                n++;
+                var member = members.Dequeue();
+                nestedWithExpression = BuildLambda(member, depth, nestedWithExpression);
+                depth++;
             }
 
-            return rootExpression as Expression<Func<T, T>>;
+            return nestedWithExpression as Expression<Func<T, T>>;
 
             LambdaExpression BuildLambda(MemberExpression current, int i, Expression propertyValue)
             {
@@ -91,7 +94,7 @@ namespace Typesafe.With
             Queue<MemberExpression> GetMembers()
             {
                 var memberExpressions = new Queue<MemberExpression>();
-                var expr = picker.Body;
+                var expr = propertyPicker.Body;
 
                 while (expr is MemberExpression memberExpr)
                 {
