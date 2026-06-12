@@ -13,11 +13,11 @@ namespace Typesafe.With
             .FirstOrDefault(m =>
                 m.Name == nameof(InternalWith)
                 && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
-                && m.GetParameters()[2] .ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
+                && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>)
             ) ?? throw new Exception();
 
         private static T InternalWith<T, TProperty>(
-            this T instance,
+            T instance,
             Expression<Func<T, TProperty>> propertyPicker,
             Expression<Func<TProperty, TProperty>> propertyValueFactory
         )
@@ -35,7 +35,7 @@ namespace Typesafe.With
 
             return builder.Construct(instance, properties);
         }
-        
+
         private static T InternalWithNested<T, TProperty>(
             this T instance,
             Expression<Func<T, TProperty>> propertyPicker,
@@ -123,24 +123,7 @@ namespace Typesafe.With
                 return InternalWithNested(instance, propertyPicker, propertyValueFactory);
             }
             
-            return InternalWith1(instance, propertyPicker, propertyValueFactory);
-        }
-
-        private static T InternalWith1<T, TProperty>(
-            T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            Expression<Func<TProperty, TProperty>> propertyValueFactory
-        )
-        {
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
-
-            Validate(propertyName, instance);
-
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-
-            return builder.Construct(instance, properties);
+            return InternalWith(instance, propertyPicker, propertyValueFactory);
         }
 
         private static void Validate<T>(string propertyName, T instance)
