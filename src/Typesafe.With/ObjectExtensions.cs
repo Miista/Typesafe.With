@@ -7,6 +7,42 @@ namespace Typesafe.With
 {
     public static class ObjectExtensions
     {
+        private static T InternalWith<T, TProperty>(
+            T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+
+            var propertyName = propertyPicker.GetPropertyName();
+            var properties = new Dictionary<string, object> { { propertyName, new DependentValue(propertyValueFactory) } };
+
+            Validate(propertyName, instance);
+
+            var constructor = TypeUtils.GetSuitableConstructor(instance);
+            var builder = new UnifiedWithBuilder<T>(constructor);
+
+            return builder.Construct(instance, properties);
+        }
+
+        private static T InternalWithNested<T, TProperty>(
+            T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            Expression<Func<TProperty, TProperty>> propertyValueFactory
+        )
+        {
+            var nestedWithExpression = NestedWithExpressionBuilder.Build(propertyPicker, propertyValueFactory);
+            return nestedWithExpression.Compile().Invoke(instance);
+        }
+
+        public static T With<T, TProperty>(
+            this T instance,
+            Expression<Func<T, TProperty>> propertyPicker,
+            TProperty propertyValue
+        ) => With(instance, propertyPicker, _ => propertyValue);
+
         public static T With<T, TProperty>(
             this T instance,
             Expression<Func<T, TProperty>> propertyPicker,
@@ -16,52 +52,21 @@ namespace Typesafe.With
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
-            {
-                {propertyName, new DependentValue(propertyValueFactory)}
-            };
-
-            Validate(propertyName, instance);
-            
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-            
-            return builder.Construct(instance, properties);
-        }
-
-        public static T With<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            TProperty propertyValue)
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
-            {
-                {propertyName, propertyValue}
-            };
-
-            Validate(propertyName, instance);
-            
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-            
-            return builder.Construct(instance, properties);
+            return propertyPicker.IsNested()
+                ? InternalWithNested(instance, propertyPicker, propertyValueFactory)
+                : InternalWith(instance, propertyPicker, propertyValueFactory);
         }
 
         private static void Validate<T>(string propertyName, T instance)
         {
             // Can we set the property via constructor?
             var hasConstructorParameter = HasConstructorParameter(propertyName, instance);
-            
+
             if (hasConstructorParameter) return;
-            
+
             // Can we set the property via property setter?
             var hasPropertySetter = HasPropertySetter(propertyName, instance);
-            
+
             if (hasPropertySetter) return;
 
             // If we cannot do either, then there is no point in continuing.
@@ -75,15 +80,14 @@ namespace Typesafe.With
             return TypeUtils.GetPropertyDictionary(instance).TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
         }
 
-        //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
         private static bool HasConstructorParameter<T>(string propertyName, T instance)
         {
             var constructorParameters = TypeUtils.GetSuitableConstructor(instance).GetParameters();
-            
+
             // Can we find a matching constructor parameter?
             var hasConstructorParameter = constructorParameters
                 .Any(info => string.Equals(info.Name, propertyName, StringComparison.Ordinal));
-            
+
             if (hasConstructorParameter) return true;
 
             // Can we find a matching constructor parameter if we lowercase both parameter and property name?

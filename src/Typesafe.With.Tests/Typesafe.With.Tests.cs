@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using AutoFixture;
 using AutoFixture.Xunit2;
 using FluentAssertions;
 using Xunit;
@@ -75,6 +76,16 @@ namespace Typesafe.With.Tests
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
                 }
+                
+                [Theory, AutoData]
+                internal void Throws_exception_if_instance_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
+                {
+                    // Arrange + Act
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, newValue);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the instance is null");
+                }
             
                 [Theory, AutoData]
                 internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
@@ -85,9 +96,29 @@ namespace Typesafe.With.Tests
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
                 }
+                
+                [Theory, AutoData]
+                internal void Throws_exception_if_propertyPicker_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With(null, newValue);
+                
+                    // Assert
+                    act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
+                }
             
                 [Theory, AutoData]
                 internal void Does_not_throw_exception_if_propertyValue_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
+                {
+                    // Arrange + Act
+                    Action act = () => instance.With(_ => _.SettableProperty, (string) null);
+                
+                    // Assert
+                    act.Should().NotThrow<ArgumentNullException>(because: "the new value is allowed to be null");
+                }
+                
+                [Theory, AutoData]
+                internal void Does_not_throw_exception_if_propertyValue_is_null_1(TypeWithConstructorTakingNonPropertyParameter instance)
                 {
                     // Arrange + Act
                     Action act = () => instance.With(_ => _.SettableProperty, (string) null);
@@ -147,15 +178,58 @@ namespace Typesafe.With.Tests
             }
             
             [Theory, AutoData]
-            internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            internal void Supports_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                Func<TypeWithNestedProperty> act = () => instance.With(_ => _.Nested.Text, newValue);
+
+                // Assert
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
+            }
+
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
                 Action act = () => instance.With(_ => _.Nested.Text, newValue);
 
                 // Assert
-                act.Should().Throw<Exception>(because: "the expression represents a nested property");
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
+            }
+
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                Action act = () => instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
             }
             
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_using_value_factory_1(TypeWithNestedProperty instance, string newValue)
+            {
+                // Arrange
+                var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
+
+                // Act
+                var result = instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
+            }
+
+            [Theory, AutoData]
+            internal void Supports_expression_representing_a_nested_property_if_using_NestedWith_1(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                var result = instance.With(_ => _.Nested.Text, newValue);
+
+                // Assert
+                result.Nested.Text.Should().Be(newValue, because: "NestedWith supports nested properties");
+            }
+
             internal class TypeWithPrivateConstructor
             {
                 public string Text { get; }
@@ -754,6 +828,121 @@ namespace Typesafe.With.Tests
             }
         }
 
+        public class NestedProperties
+        {
+            internal class TypeWithNestedProperty
+            {
+                internal class NestedType
+                {
+                    public string Text { get; set; }
+                }
+
+                public NestedType Nested { get; set; }
+            }
+            
+            internal class TypeWithDeeplyNestedProperty
+            {
+                public TypeWithDeeplyNestedProperty Nested { get; set; }
+                public string Text { get; set; }
+            }
+
+            // ReSharper disable once InconsistentNaming
+            public static IEnumerable<object[]> Supports_setting_an_arbitrarily_deeply_nested_property_Data
+            {
+                get
+                {
+                    yield return TestCase(
+                        level: 0,
+                        instance => instance.Text,
+                        instance => instance
+                    );
+                    
+                    yield return TestCase(
+                        level: 1,
+                        instance => instance.Nested.Text,
+                        instance => instance.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 2,
+                        instance => instance.Nested.Nested.Text,
+                        instance => instance.Nested.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 5,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Text,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested
+                    );
+                    
+                    yield return TestCase(
+                        level: 10,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Text,
+                        instance => instance.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested.Nested
+                    );
+                    yield break;
+
+                    object[] TestCase(
+                        int level,
+                        Expression<Func<TypeWithDeeplyNestedProperty, string>> propertyPicker,
+                        Func<TypeWithDeeplyNestedProperty, TypeWithDeeplyNestedProperty> valueGetter
+                    )
+                    {
+                        var fixture = new Fixture().Customize(new TypeWithDeeplyNestedPropertyCustomization(level));
+
+                        var type = fixture.Create<TypeWithDeeplyNestedProperty>();
+                        var value = fixture.Create<string>();
+
+                        return new object[] { level, type, propertyPicker, valueGetter, value };
+                    }
+                }
+            }
+
+            [Theory, MemberData(nameof(Supports_setting_an_arbitrarily_deeply_nested_property_Data))]
+            internal void Supports_setting_an_arbitrarily_deeply_nested_property(
+#pragma warning disable xUnit1026
+                int level,
+#pragma warning restore xUnit1026
+                TypeWithDeeplyNestedProperty instance,
+                Expression<Func<TypeWithDeeplyNestedProperty, string>> expression,
+                Func<TypeWithDeeplyNestedProperty, TypeWithDeeplyNestedProperty> valueGetter,
+                string newValue
+            )
+            {
+                // Act
+                Func<TypeWithDeeplyNestedProperty> act = () => instance.With(expression, newValue);
+
+                // Assert
+                valueGetter(act()).Text.Should().Be(newValue, because: "that is the value set");
+            }
+            
+            [Theory, AutoData]
+            internal void Supports_setting_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                Func<TypeWithNestedProperty> act = () => instance.With(_ => _.Nested.Text, newValue);
+
+                // Assert
+                act().Nested.Text.Should().Be(newValue, because: "that is the value set");
+            }
+
+            [Theory, AutoData]
+            internal void Supports_setting_a_nested_property_using_value_factory(
+                TypeWithNestedProperty instance,
+                string newValue
+            )
+            {
+                // Arrange
+                var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
+
+                // Act
+                var result = instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
+            }
+        }
+
         public class General
         {
             internal class TypeCreatesNewInstance
@@ -762,7 +951,7 @@ namespace Typesafe.With.Tests
 
                 public TypeCreatesNewInstance(string id) => Id = id;
             }
-            
+
             [Theory, AutoData]
             internal void Calling_With_creates_a_new_instance(TypeCreatesNewInstance source, string newValue)
             {
