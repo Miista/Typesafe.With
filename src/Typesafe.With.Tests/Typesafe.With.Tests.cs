@@ -177,13 +177,13 @@ namespace Typesafe.With.Tests
             }
             
             [Theory, AutoData]
-            internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            internal void Supports_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                Action act = () => instance.With(_ => _.Nested.Text, newValue);
+                Func<TypeWithNestedProperty> act = () => instance.With(_ => _.Nested.Text, newValue);
 
                 // Assert
-                act.Should().Throw<Exception>(because: "the expression represents a nested property");
+                act.Should().NotThrow<Exception>(because: "the expression represents a nested property");
             }
 
             [Theory, AutoData]
@@ -827,6 +827,45 @@ namespace Typesafe.With.Tests
             }
         }
 
+        public class NestedProperties
+        {
+            internal class TypeWithNestedProperty
+            {
+                internal class NestedType
+                {
+                    public string Text { get; set; }
+                }
+
+                public NestedType Nested { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Supports_setting_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            {
+                // Act
+                Func<TypeWithNestedProperty> act = () => instance.With(_ => _.Nested.Text, newValue);
+
+                // Assert
+                act().Nested.Text.Should().Be(newValue, because: "that is the value set");
+            }
+
+            [Theory, AutoData]
+            internal void Supports_setting_a_nested_property_using_value_factory_1(
+                TypeWithNestedProperty instance,
+                string newValue
+            )
+            {
+                // Arrange
+                var expectedTextResult = string.Concat(instance.Nested.Text, newValue);
+
+                // Act
+                var result = instance.With(_ => _.Nested.Text, existing => string.Concat(existing, newValue));
+
+                // Assert
+                result.Nested.Text.Should().Be(expectedTextResult, because: "the existing and newValue should be concatenated");
+            }
+        }
+
         public class General
         {
             internal class TypeCreatesNewInstance
@@ -835,7 +874,7 @@ namespace Typesafe.With.Tests
 
                 public TypeCreatesNewInstance(string id) => Id = id;
             }
-            
+
             [Theory, AutoData]
             internal void Calling_With_creates_a_new_instance(TypeCreatesNewInstance source, string newValue)
             {
