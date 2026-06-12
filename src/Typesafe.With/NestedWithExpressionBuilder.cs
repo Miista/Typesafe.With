@@ -23,6 +23,8 @@ namespace Typesafe.With
         {
             var memberChain = GetMemberChainFromLeaf(propertyPicker);
 
+            if (memberChain.Count == 0) throw new InvalidOperationException($"Expression '{propertyPicker}' does not contain any member access");
+
             // Build leaf
             var nestedWithExpression = BuildLambda(
                 memberChain[0],
