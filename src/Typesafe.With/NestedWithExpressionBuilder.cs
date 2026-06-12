@@ -21,19 +21,42 @@ namespace Typesafe.With
             Expression<Func<TValue, TValue>> propertyValueFactory
         )
         {
-            var members = GetMembers(propertyPicker);
-            var root = members.Dequeue();
-            var nestedWithExpression = BuildLambda(root, 0, propertyValueFactory);
+            var memberChain = GetMemberChainFromLeaf(propertyPicker);
 
-            var depth = 1;
-            while (members.Count > 0)
+            // Build leaf
+            var nestedWithExpression = BuildLambda(
+                memberChain[0],
+                depth: 0,
+                propertyValue: propertyValueFactory
+            );
+
+            // Build chain from leaf to root
+            for (var depth = 1; depth < memberChain.Count; depth++)
             {
-                var member = members.Dequeue();
-                nestedWithExpression = BuildLambda(member, depth, nestedWithExpression);
-                depth++;
+                nestedWithExpression = BuildLambda(
+                    memberChain[depth],
+                    depth,
+                    nestedWithExpression
+                );
             }
 
-            return nestedWithExpression as Expression<Func<T, T>>;
+            return (Expression<Func<T, T>>)nestedWithExpression;
+        }
+
+        private static IReadOnlyList<MemberExpression> GetMemberChainFromLeaf<T, TValue>(
+            Expression<Func<T, TValue>> propertyPicker
+        )
+        {
+            var members = new List<MemberExpression>();
+            var expression = propertyPicker.Body;
+
+            while (expression is MemberExpression memberExpression)
+            {
+                members.Add(memberExpression);
+                expression = memberExpression.Expression;
+            }
+
+            return members;
         }
 
         private static LambdaExpression BuildLambda(MemberExpression current, int depth, Expression propertyValue)
@@ -52,20 +75,6 @@ namespace Typesafe.With
             );
 
             return Expression.Lambda(withCall, instanceParam);
-        }
-
-        private static Queue<MemberExpression> GetMembers<T, TValue>(Expression<Func<T, TValue>> propertyPicker)
-        {
-            var memberExpressions = new Queue<MemberExpression>();
-            var expr = propertyPicker.Body;
-
-            while (expr is MemberExpression memberExpr)
-            {
-                memberExpressions.Enqueue(memberExpr);
-                expr = memberExpr.Expression;
-            }
-
-            return memberExpressions;
         }
     }
 }
