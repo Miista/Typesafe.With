@@ -57,12 +57,12 @@ namespace Typesafe.With
 
             var rootExpression = BuildLambda(root, 0, value);
 
-            for (var i = 1; i < 1 + members.Count; i++)
+            var n = 1;
+            while (members.Count > 0)
             {
-                var current1 = members.Dequeue();
-
-                var lambdaExpression = BuildLambda(current1, i, rootExpression);
-                rootExpression = lambdaExpression;
+                var current = members.Dequeue();
+                rootExpression = BuildLambda(current, n, rootExpression);
+                n++;
             }
 
             return rootExpression as Expression<Func<T, T>>;
