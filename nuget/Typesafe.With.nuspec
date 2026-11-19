@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Typesafe.With</id>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <title>Typesafe: Adding typesafe with'ers</title>
     <authors>Søren Guldmund</authors>
     <owners>Søren Guldmund</owners>
@@ -11,12 +11,15 @@
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A typesafe way of adding with-functionality to any type.</description>
-    <copyright>Copyright 2024</copyright>
+    <copyright>Copyright 2026</copyright>
     <tags>Typed With Immutable Records Functional</tags>
 	<readme>docs\README.md</readme>
     <releaseNotes>
-		* Add support for interfaces
-    * Update exception message when unable to find constructor parameter
+		* Add Without, which resets a property to its default value (null for reference and nullable types)
+		* Add XML documentation for the public API
+		* Enable nullable reference type annotations
+		* Property pickers must now select a property directly on the parameter; fields, static, captured, indexed and casted nested properties throw InvalidOperationException (previously some silently set the wrong property)
+		* Throw ArgumentNullException when the value factory passed to With is null
 	</releaseNotes>
 
     <dependencies>
