@@ -7,21 +7,21 @@ namespace Typesafe.With
 {
     internal static class TypeUtils
     {
-        public static Dictionary<string, PropertyInfo> GetPropertyDictionary<T>(T instance) =>
-            GetCorrectedType(instance)
-                .GetProperties()
-                .ToDictionary(info => info.Name.ToParameterCase());
+        extension<T>(T instance) where T : notnull
+        {
+            public Dictionary<string, PropertyInfo> PropertyDictionary =>
+                instance.CorrectedType
+                    .GetProperties()
+                    .ToDictionary(info => info.Name.ToParameterCase());
 
-        public static ConstructorInfo GetSuitableConstructor<T>(T instance) =>
-            GetCorrectedType(instance)
-                .GetConstructors()
-                .OrderByDescending(info => info.GetParameters().Length)
-                .FirstOrDefault()
-            ?? throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
+            public ConstructorInfo GetSuitableConstructor() =>
+                instance.CorrectedType
+                    .GetConstructors()
+                    .OrderByDescending(info => info.GetParameters().Length)
+                    .FirstOrDefault()
+                ?? throw new InvalidOperationException($"Could not find any constructor for type {typeof(T)}.");
 
-        private static Type GetCorrectedType<T>(T instance) =>
-            typeof(T).IsInterface
-                ? instance.GetType()
-                : typeof(T);
+            private Type CorrectedType => typeof(T).IsInterface ? instance.GetType() : typeof(T);
+        }
     }
 }

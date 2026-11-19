@@ -5,24 +5,15 @@ using System.Reflection;
 
 namespace Typesafe.With
 {
-    internal class UnifiedWithBuilder<T>
+    internal class UnifiedWithBuilder<T>(ConstructorInfo constructorInfo)
+        where T : notnull
     {
-        private readonly ConstructorInfo _constructorInfo;
-
-        public UnifiedWithBuilder(ConstructorInfo constructorInfo)
+        public T Construct(T instance, Dictionary<string, object?> properties)
         {
-            _constructorInfo = constructorInfo ?? throw new ArgumentNullException(nameof(constructorInfo));
-        }
-
-        public T Construct(T instance, IDictionary<string, object> properties)
-        {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (properties == null) throw new ArgumentNullException(nameof(properties));
-
             var valueResolver = new DependentValueResolver<T>(instance);
             
             // 1. Construct instance of T (and set properties via constructor)
-            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
+            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, constructorInfo, valueResolver);
             
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
@@ -33,19 +24,20 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
+            var copyProperties = GetCopyProperties(constructorInfo, properties, constructedInstance);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;
         }
 
-        private static (TInstance Instance, IDictionary<string, object> RemainingProperties) WithByConstructor<TInstance>(
+        private static (TInstance Instance, IDictionary<string, object?> RemainingProperties) WithByConstructor<TInstance>(
             TInstance instance,
-            IDictionary<string, object> newProperties,
+            Dictionary<string, object?> newProperties,
             ConstructorInfo constructorInfo,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
-            var remainingProperties = new Dictionary<string, object>(newProperties);
+            var remainingProperties = new Dictionary<string, object?>(newProperties);
             var parameters = BuildParameters(remainingProperties, constructorInfo, instance, newProperties, dependentValueResolver);
 
             var constructedInstance = constructorInfo.Invoke(parameters) is TInstance castedInstance
@@ -55,21 +47,22 @@ namespace Typesafe.With
             return (constructedInstance, remainingProperties);
         }
         
-        private static object[] BuildParameters<TInstance>(
-            IDictionary<string, object> remainingProperties,
+        private static object?[] BuildParameters<TInstance>(
+            Dictionary<string, object?> remainingProperties,
             ConstructorInfo constructorInfo,
             TInstance instance,
-            IDictionary<string, object> newProperties,
+            Dictionary<string, object?> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
-            var existingProperties = TypeUtils.GetPropertyDictionary(instance);
-            var resolvedConstructorParameters = new List<object>();
+            var existingProperties = instance.PropertyDictionary;
+            var resolvedConstructorParameters = new List<object?>();
             var constructorParameters = constructorInfo.GetParameters();
             
             foreach (var parameter in constructorParameters)
             {
-                var (existingProperty, propertyName) = TryFindExistingProperty(parameter);
-                var originalValue = existingProperty?.GetValue(instance);
+                var (existingProperty, propertyName) = FindExistingProperty(parameter);
+                var originalValue = existingProperty.GetValue(instance);
                 var hasNewValue = newProperties.TryGetValue(propertyName, out var newValue);
                 var value = hasNewValue
                     ? newValue is DependentValue dependentValue
@@ -83,7 +76,7 @@ namespace Typesafe.With
 
             return resolvedConstructorParameters.ToArray();
             
-            (PropertyInfo ExistingProperty, string PropertyName) TryFindExistingProperty(ParameterInfo parameterInfo)
+            (PropertyInfo ExistingProperty, string PropertyName) FindExistingProperty(ParameterInfo parameterInfo)
             {
                 // Can we find a matching property?
                 if (existingProperties.TryGetValue(parameterInfo.Name, out var existingPropertyByExactMatch))
@@ -115,14 +108,14 @@ namespace Typesafe.With
         /// <typeparam name="TInstance">The instance type.</typeparam>
         /// <returns>A mutated instance.</returns>
         /// <exception cref="InvalidOperationException">If the property does not exist or cannot be written to.</exception>
-        /// <exception cref="ArgumentNullException">If any of the arguments are null.</exception>
-        private static (TInstance Instance, IDictionary<string, object> RemainingProperties) EnrichByProperty<TInstance>(
+        private static (TInstance Instance, IDictionary<string, object?> RemainingProperties) EnrichByProperty<TInstance>(
             TInstance instance,
-            IDictionary<string, object> propertiesToSet,
+            IDictionary<string, object?> propertiesToSet,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
-            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
-            var remainingProperties = new Dictionary<string, object>(propertiesToSet);
+            var existingProperties = (IDictionary<string, PropertyInfo>) instance.PropertyDictionary;
+            var remainingProperties = new Dictionary<string, object?>(propertiesToSet);
 
             foreach (var property in propertiesToSet)
             {
@@ -149,11 +142,11 @@ namespace Typesafe.With
 
         private static IEnumerable<PropertyInfo> GetCopyProperties(
             ConstructorInfo constructorInfo,
-            IDictionary<string, object> excludeProperties,
+            Dictionary<string, object?> excludeProperties,
             T instance
         )
         {
-            var publicProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var publicProperties = (IDictionary<string, PropertyInfo>) instance.PropertyDictionary;
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))

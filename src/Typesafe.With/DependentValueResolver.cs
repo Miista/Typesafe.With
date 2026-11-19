@@ -2,18 +2,12 @@
 
 namespace Typesafe.With
 {
-    internal class DependentValueResolver<TInstance>
+    internal class DependentValueResolver<TInstance>(TInstance instance)
+        where TInstance : notnull
     {
-        private readonly TInstance _instance;
-
-        public DependentValueResolver(TInstance instance)
+        public object? Resolve(DependentValue dependentValue, PropertyInfo existingProperty)
         {
-            _instance = instance;
-        }
-
-        public object Resolve(DependentValue dependentValue, PropertyInfo existingProperty)
-        {
-            return dependentValue.Resolve(existingProperty, _instance);
+            return dependentValue.Resolve(existingProperty, instance);
         }
     }
 }
