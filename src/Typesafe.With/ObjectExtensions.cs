@@ -20,7 +20,7 @@ namespace Typesafe.With
                 if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
                 var propertyName = propertyPicker.PropertyName;
-                var properties = new Dictionary<string, object>
+                var properties = new Dictionary<string, object?>
                 {
                     {propertyName, new DependentValue(propertyValueFactory)}
                 };
@@ -41,7 +41,7 @@ namespace Typesafe.With
                 if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
                 var propertyName = propertyPicker.PropertyName;
-                var properties = new Dictionary<string, object>
+                var properties = new Dictionary<string, object?>
                 {
                     {propertyName, propertyValue}
                 };

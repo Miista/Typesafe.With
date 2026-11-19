@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Typesafe.With;
+﻿namespace Typesafe.With;
 
 internal static class StringExtensions
 {
