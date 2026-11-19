@@ -6,20 +6,21 @@ namespace Typesafe.With
 {
     internal static class ExpressionExtensions
     {
-        public static string GetPropertyName<T, TProperty>(this Expression<Func<T, TProperty>> expression)
+        extension<T, TProperty>(Expression<Func<T, TProperty>> expression)
         {
-            if (expression == null) throw new ArgumentNullException(nameof(expression));
-            
-            switch (expression.Body)
+            public string GetPropertyName()
             {
-                case UnaryExpression u when u.Operand is MemberExpression um:
-                    return (um.Member as PropertyInfo)?.Name.ToParameterCase();
-                case MemberExpression m when m.Expression.NodeType == ExpressionType.MemberAccess:
-                    throw new InvalidOperationException($"Expression '{expression}' represents a nested property");
-                case MemberExpression m:
-                    return (m.Member as PropertyInfo)?.Name.ToParameterCase();
-                default:
-                    throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'");
+                if (expression == null) throw new ArgumentNullException(nameof(expression));
+
+                return expression.Body switch
+                {
+                    UnaryExpression { Operand: MemberExpression um } => (um.Member as PropertyInfo)?.Name.ToParameterCase()!,
+                    MemberExpression { Expression.NodeType: ExpressionType.MemberAccess } => throw new InvalidOperationException(
+                        $"Expression '{expression}' represents a nested property"
+                    ),
+                    MemberExpression m => (m.Member as PropertyInfo)?.Name.ToParameterCase()!,
+                    _ => throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'")
+                };
             }
         }
     }

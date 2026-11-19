@@ -13,8 +13,8 @@ namespace Typesafe.With
             Expression<Func<TProperty, TProperty>> propertyValueFactory
         )
         {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+            if (instance is null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
             var propertyName = propertyPicker.GetPropertyName();
             var properties = new Dictionary<string, object>
@@ -35,8 +35,8 @@ namespace Typesafe.With
             Expression<Func<T, TProperty>> propertyPicker,
             TProperty propertyValue)
         {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker == null) throw new ArgumentNullException(nameof(propertyPicker));
+            if (instance is null) throw new ArgumentNullException(nameof(instance));
+            if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
             var propertyName = propertyPicker.GetPropertyName();
             var properties = new Dictionary<string, object>
