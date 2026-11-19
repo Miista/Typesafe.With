@@ -1,10 +1,12 @@
 ﻿using System;
 
-namespace Typesafe.With
+namespace Typesafe.With;
+
+internal static class StringExtensions
 {
-    internal static class StringExtensions
+    extension(string s)
     {
-        public static string ToParameterCase(this string s)
+        public string ToParameterCase()
         {
             if (s == null) throw new ArgumentNullException(nameof(s));
 
@@ -13,8 +15,8 @@ namespace Typesafe.With
 
             return firstLetterInLowercase + remainingString;
         }
-        
-        public static string ToPropertyCase(this string s)
+
+        public string ToPropertyCase()
         {
             if (s == null) throw new ArgumentNullException(nameof(s));
 
