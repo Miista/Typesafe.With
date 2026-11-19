@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 
 namespace Typesafe.With
 {
@@ -8,7 +9,7 @@ namespace Typesafe.With
 
         public DependentValueResolver(TInstance instance)
         {
-            _instance = instance;
+            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
 
         public object Resolve(DependentValue dependentValue, PropertyInfo existingProperty)

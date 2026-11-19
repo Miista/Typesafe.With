@@ -5,15 +5,9 @@ using System.Reflection;
 
 namespace Typesafe.With
 {
-    internal class UnifiedWithBuilder<T>
+    internal class UnifiedWithBuilder<T>(ConstructorInfo constructorInfo)
+        where T : notnull
     {
-        private readonly ConstructorInfo _constructorInfo;
-
-        public UnifiedWithBuilder(ConstructorInfo constructorInfo)
-        {
-            _constructorInfo = constructorInfo ?? throw new ArgumentNullException(nameof(constructorInfo));
-        }
-
         public T Construct(T instance, IDictionary<string, object> properties)
         {
             if (instance == null) throw new ArgumentNullException(nameof(instance));
@@ -22,7 +16,7 @@ namespace Typesafe.With
             var valueResolver = new DependentValueResolver<T>(instance);
             
             // 1. Construct instance of T (and set properties via constructor)
-            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, _constructorInfo, valueResolver);
+            var (constructedInstance, remainingPropertiesAfterCtor) = WithByConstructor(instance, properties, constructorInfo, valueResolver);
             
             // 2. Set new properties via property setters
             var (enrichedInstance, remainingPropertiesAfterPropSet) = EnrichByProperty(constructedInstance, remainingPropertiesAfterCtor, valueResolver);
@@ -33,7 +27,7 @@ namespace Typesafe.With
             }
             
             // 3. Copy remaining properties
-            var copyProperties = GetCopyProperties(_constructorInfo, properties, constructedInstance);
+            var copyProperties = GetCopyProperties(constructorInfo, properties, constructedInstance);
             var enrichedInstanceWithCopiedProperties = CopyProperties(instance, enrichedInstance, copyProperties);
             
             return enrichedInstanceWithCopiedProperties;
@@ -44,6 +38,7 @@ namespace Typesafe.With
             IDictionary<string, object> newProperties,
             ConstructorInfo constructorInfo,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
             var remainingProperties = new Dictionary<string, object>(newProperties);
             var parameters = BuildParameters(remainingProperties, constructorInfo, instance, newProperties, dependentValueResolver);
@@ -61,8 +56,9 @@ namespace Typesafe.With
             TInstance instance,
             IDictionary<string, object> newProperties,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
-            var existingProperties = TypeUtils.GetPropertyDictionary(instance);
+            var existingProperties = instance.PropertyDictionary;
             var resolvedConstructorParameters = new List<object>();
             var constructorParameters = constructorInfo.GetParameters();
             
@@ -120,8 +116,9 @@ namespace Typesafe.With
             TInstance instance,
             IDictionary<string, object> propertiesToSet,
             DependentValueResolver<TInstance> dependentValueResolver)
+            where TInstance : notnull
         {
-            var existingProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var existingProperties = (IDictionary<string, PropertyInfo>) instance.PropertyDictionary;
             var remainingProperties = new Dictionary<string, object>(propertiesToSet);
 
             foreach (var property in propertiesToSet)
@@ -153,7 +150,7 @@ namespace Typesafe.With
             T instance
         )
         {
-            var publicProperties = (IDictionary<string, PropertyInfo>) TypeUtils.GetPropertyDictionary(instance);
+            var publicProperties = (IDictionary<string, PropertyInfo>) instance.PropertyDictionary;
             
             // Remove properties already set
             foreach (var parameter in excludeProperties.Select(kvp => kvp.Key))

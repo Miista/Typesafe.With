@@ -7,92 +7,95 @@ namespace Typesafe.With
 {
     public static class ObjectExtensions
     {
-        public static T With<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            Expression<Func<TProperty, TProperty>> propertyValueFactory
-        )
+        extension<T>(T instance)
+            where T : notnull
         {
-            if (instance is null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
-
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
+            
+            public T With<TProperty>(
+                Expression<Func<T, TProperty>> propertyPicker,
+                Expression<Func<TProperty, TProperty>> propertyValueFactory
+            )
             {
-                {propertyName, new DependentValue(propertyValueFactory)}
-            };
+                if (instance is null) throw new ArgumentNullException(nameof(instance));
+                if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            Validate(propertyName, instance);
-            
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-            
-            return builder.Construct(instance, properties);
-        }
+                var propertyName = propertyPicker.PropertyName;
+                var properties = new Dictionary<string, object>
+                {
+                    {propertyName, new DependentValue(propertyValueFactory)}
+                };
 
-        public static T With<T, TProperty>(
-            this T instance,
-            Expression<Func<T, TProperty>> propertyPicker,
-            TProperty propertyValue)
-        {
-            if (instance is null) throw new ArgumentNullException(nameof(instance));
-            if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
+                instance.Validate(propertyName);
+                
+                var constructor = instance.GetSuitableConstructor();
+                var builder = new UnifiedWithBuilder<T>(constructor);
+                
+                return builder.Construct(instance, properties);
+            }
 
-            var propertyName = propertyPicker.GetPropertyName();
-            var properties = new Dictionary<string, object>
+            public T With<TProperty>(
+                Expression<Func<T, TProperty>> propertyPicker,
+                TProperty propertyValue)
             {
-                {propertyName, propertyValue}
-            };
+                if (instance is null) throw new ArgumentNullException(nameof(instance));
+                if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            Validate(propertyName, instance);
-            
-            var constructor = TypeUtils.GetSuitableConstructor(instance);
-            var builder = new UnifiedWithBuilder<T>(constructor);
-            
-            return builder.Construct(instance, properties);
-        }
+                var propertyName = propertyPicker.PropertyName;
+                var properties = new Dictionary<string, object>
+                {
+                    {propertyName, propertyValue}
+                };
 
-        private static void Validate<T>(string propertyName, T instance)
-        {
-            // Can we set the property via constructor?
-            var hasConstructorParameter = HasConstructorParameter(propertyName, instance);
-            
-            if (hasConstructorParameter) return;
-            
-            // Can we set the property via property setter?
-            var hasPropertySetter = HasPropertySetter(propertyName, instance);
-            
-            if (hasPropertySetter) return;
+                instance.Validate(propertyName);
+                
+                var constructor = instance.GetSuitableConstructor();
+                var builder = new UnifiedWithBuilder<T>(constructor);
+                
+                return builder.Construct(instance, properties);
+            }
 
-            // If we cannot do either, then there is no point in continuing.
-            throw new InvalidOperationException(
-                $"Error calling {nameof(With)} on type {typeof(T)}: Property '{propertyName.ToPropertyCase()}' cannot be set via constructor or property setter. You can fix this by making the property settable or adding it as a constructor parameter."
-            );
-        }
+            private void Validate(string propertyName)
+            {
+                // Can we set the property via constructor?
+                var hasConstructorParameter = instance.HasConstructorParameter(propertyName);
+                
+                if (hasConstructorParameter) return;
+                
+                // Can we set the property via property setter?
+                var hasPropertySetter = instance.HasPropertySetter(propertyName);
+                
+                if (hasPropertySetter) return;
 
-        private static bool HasPropertySetter<T>(string propertyName, T instance)
-        {
-            return TypeUtils.GetPropertyDictionary(instance).TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
-        }
+                // If we cannot do either, then there is no point in continuing.
+                throw new InvalidOperationException(
+                    $"Error calling {nameof(With)} on type {typeof(T)}: Property '{propertyName.ToPropertyCase()}' cannot be set via constructor or property setter. You can fix this by making the property settable or adding it as a constructor parameter."
+                );
+            }
 
-        //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
-        private static bool HasConstructorParameter<T>(string propertyName, T instance)
-        {
-            var constructorParameters = TypeUtils.GetSuitableConstructor(instance).GetParameters();
-            
-            // Can we find a matching constructor parameter?
-            var hasConstructorParameter = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName, StringComparison.Ordinal));
-            
-            if (hasConstructorParameter) return true;
+            private bool HasPropertySetter(string propertyName)
+            {
+                return instance.PropertyDictionary.TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
+            }
 
-            // Can we find a matching constructor parameter if we lowercase both parameter and property name?
-            var hasConstructorParameterByLowercase = constructorParameters
-                .Any(info => string.Equals(info.Name, propertyName, StringComparison.InvariantCultureIgnoreCase));
+            //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
+            private bool HasConstructorParameter(string propertyName)
+            {
+                var constructorParameters = instance.GetSuitableConstructor().GetParameters();
+                
+                // Can we find a matching constructor parameter?
+                var hasConstructorParameter = constructorParameters
+                    .Any(info => string.Equals(info.Name, propertyName, StringComparison.Ordinal));
+                
+                if (hasConstructorParameter) return true;
 
-            if (hasConstructorParameterByLowercase) return true;
+                // Can we find a matching constructor parameter if we lowercase both parameter and property name?
+                var hasConstructorParameterByLowercase = constructorParameters
+                    .Any(info => string.Equals(info.Name, propertyName, StringComparison.InvariantCultureIgnoreCase));
 
-            return false;
+                if (hasConstructorParameterByLowercase) return true;
+
+                return false;
+            }
         }
     }
 }
