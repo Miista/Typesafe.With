@@ -1,20 +1,13 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace Typesafe.With
 {
-    internal class DependentValueResolver<TInstance>
+    internal class DependentValueResolver<TInstance>(TInstance instance)
+        where TInstance : notnull
     {
-        private readonly TInstance _instance;
-
-        public DependentValueResolver(TInstance instance)
-        {
-            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
-        }
-
         public object Resolve(DependentValue dependentValue, PropertyInfo existingProperty)
         {
-            return dependentValue.Resolve(existingProperty, _instance);
+            return dependentValue.Resolve(existingProperty, instance);
         }
     }
 }

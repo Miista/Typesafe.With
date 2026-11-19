@@ -10,9 +10,6 @@ namespace Typesafe.With
     {
         public T Construct(T instance, Dictionary<string, object?> properties)
         {
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
-            if (properties == null) throw new ArgumentNullException(nameof(properties));
-
             var valueResolver = new DependentValueResolver<T>(instance);
             
             // 1. Construct instance of T (and set properties via constructor)
