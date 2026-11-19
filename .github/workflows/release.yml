@@ -1,0 +1,58 @@
+name: Release
+
+# Push a tag like v1.3.0 to build, test and pack. The packages are attached to a
+# GitHub release; upload Typesafe.With.<version>.nupkg to nuget.org manually.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # needed to create the GitHub release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check tag matches nuspec version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          nuspec_version="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' nuget/Typesafe.With.nuspec | head -1)"
+          echo "Tag: $tag_version, nuspec: $nuspec_version"
+          if [ "$tag_version" != "$nuspec_version" ]; then
+            echo "::error::Tag v$tag_version does not match nuspec version $nuspec_version"
+            exit 1
+          fi
+
+      - name: Test
+        run: dotnet test src/Typesafe.With.sln --configuration Release
+
+      - name: Pack
+        run: >
+          dotnet pack src/Typesafe.With/Typesafe.With.csproj
+          --configuration Release --no-build
+          --include-source --include-symbols
+          -p:NuspecFile=../../nuget/Typesafe.With.nuspec
+          -p:NuspecBasePath=bin/Release
+          --output artifacts
+
+      - name: Verify package contents
+        run: |
+          pkg="artifacts/Typesafe.With.${GITHUB_REF_NAME#v}.nupkg"
+          contents="$(unzip -l "$pkg")"
+          echo "$contents"
+          for expected in lib/netstandard2.0/Typesafe.With.dll lib/netstandard2.0/Typesafe.With.xml docs/README.md; do
+            grep -q "$expected" <<< "$contents" || { echo "::error::$expected missing from $pkg"; exit 1; }
+          done
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/*.nupkg --title "$GITHUB_REF_NAME" --generate-notes
