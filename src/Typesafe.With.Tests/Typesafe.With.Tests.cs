@@ -1049,6 +1049,7 @@ namespace Typesafe.With.Tests
 
             private class TestData : IEnumerable<object[]>
             {
+                #nullable disable
                 public IEnumerator<object[]> GetEnumerator()
                 {
                     yield return new object[]{null, null, null, null, null, null, null, null, null};
@@ -1088,6 +1089,7 @@ namespace Typesafe.With.Tests
                     yield return new object[]{"1",  null, 1,    "2",  "2",  2,    "2",  "2",  2};
                     yield return new object[]{"1",  "1",  null, "2",  "2",  2,    "2",  "2",  2};
                 }
+                #nullable restore
 
                 IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
             }
@@ -1283,6 +1285,247 @@ namespace Typesafe.With.Tests
                 // Assert
                 result.Should().NotBeNull();
                 result.Names.Should().HaveCount(2, because: "there are 2 elements in the list");
+            }
+        }
+
+        public class Without
+        {
+            private class SettableContainer<T>
+            {
+                public T Value { get; set; } = default!;
+            }
+
+            private class ConstructorContainer<T>
+            {
+                public T Value { get; }
+
+                public ConstructorContainer(T value) => Value = value;
+            }
+
+            // Non-default values, so that resetting to default is observable
+            // ReSharper disable once InconsistentNaming
+            public static IEnumerable<object[]> Primitive_values
+            {
+                get
+                {
+                    yield return new object[] {1};
+                    yield return new object[] {(short) 1};
+                    yield return new object[] {(ushort) 1};
+                    yield return new object[] {1u};
+                    yield return new object[] {1ul};
+                    yield return new object[] {1L};
+                    yield return new object[] {1M};
+                    yield return new object[] {1d};
+                    yield return new object[] {1f};
+                    yield return new object[] {true};
+                    yield return new object[] {'a'};
+                    yield return new object[] {(byte) 1};
+                    yield return new object[] {(sbyte) 1};
+                }
+            }
+
+            [Theory]
+            [MemberData(nameof(Primitive_values))]
+            public void Resets_value_type_to_default_via_setter<T>(T value) where T : struct
+            {
+                // Arrange
+                var sut = new SettableContainer<T> {Value = value};
+
+                // Act
+                var result = sut.Without(p => p.Value);
+
+                // Assert
+                result.Value.Should().Be(default(T), because: $"default({typeof(T).Name}) is the reset value");
+            }
+
+            [Theory]
+            [MemberData(nameof(Primitive_values))]
+            public void Resets_value_type_to_default_via_constructor<T>(T value) where T : struct
+            {
+                // Arrange
+                var sut = new ConstructorContainer<T>(value);
+
+                // Act
+                var result = sut.Without(p => p.Value);
+
+                // Assert
+                result.Value.Should().Be(default(T), because: $"default({typeof(T).Name}) is the reset value");
+            }
+
+            [Theory]
+            [MemberData(nameof(Primitive_values))]
+            public void Resets_nullable_value_type_to_null_via_setter<T>(T value) where T : struct
+            {
+                // Arrange
+                var sut = new SettableContainer<T?> {Value = value};
+
+                // Act
+                var result = sut.Without(p => p.Value);
+
+                // Assert
+                result.Value.Should().BeNull(because: $"default({typeof(T).Name}?) is null, not default({typeof(T).Name})");
+            }
+
+            [Theory]
+            [MemberData(nameof(Primitive_values))]
+            public void Resets_nullable_value_type_to_null_via_constructor<T>(T value) where T : struct
+            {
+                // Arrange
+                var sut = new ConstructorContainer<T?>(value);
+
+                // Act
+                var result = sut.Without(p => p.Value);
+
+                // Assert
+                result.Value.Should().BeNull(because: $"default({typeof(T).Name}?) is null, not default({typeof(T).Name})");
+            }
+
+            internal class TypeWithSettableNullableProperties
+            {
+                public string Name { get; set; } = "";
+                public string? MiddleName { get; set; }
+                public int? Age { get; set; }
+            }
+
+            internal class TypeWithConstructorNullableProperties
+            {
+                public string Name { get; }
+                public string? MiddleName { get; }
+                public int? Age { get; }
+
+                public TypeWithConstructorNullableProperties(string name, string? middleName, int? age)
+                {
+                    Name = name;
+                    MiddleName = middleName;
+                    Age = age;
+                }
+            }
+
+            internal class TypeWithNestedNullableProperty
+            {
+                public TypeWithSettableNullableProperties Nested { get; set; } = new();
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nullable_reference_property_to_null_via_setter(TypeWithSettableNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.MiddleName);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.MiddleName.Should().BeNull(because: "the property was removed");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.MiddleName), because: "other properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nullable_value_type_property_to_null_via_setter(TypeWithSettableNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.Age);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Age.Should().BeNull(because: "the property was removed");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.Age), because: "other properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nullable_reference_property_to_null_via_constructor(TypeWithConstructorNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.MiddleName);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.MiddleName.Should().BeNull(because: "the property was removed");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.MiddleName), because: "other properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nullable_value_type_property_to_null_via_constructor(TypeWithConstructorNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.Age);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Age.Should().BeNull(because: "the property was removed");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.Age), because: "other properties are copied");
+            }
+
+            // Mirrors With, which also allows setting non-nullable reference properties to null (see General.TestData)
+            [Theory, AutoData]
+            internal void Sets_non_nullable_reference_property_to_null_via_setter(TypeWithSettableNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.Name);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Name.Should().BeNull(because: "nullable annotations are not enforced at runtime, same as With");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.Name), because: "other properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_non_nullable_reference_property_to_null_via_constructor(TypeWithConstructorNullableProperties sut)
+            {
+                // Act
+                var result = sut.Without(p => p.Name);
+
+                // Assert
+                result.Should().NotBeNull();
+                result.Name.Should().BeNull(because: "nullable annotations are not enforced at runtime, same as With");
+                result.Should().BeEquivalentTo(sut, options => options.Excluding(p => p.Name), because: "other properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Does_not_modify_the_original_instance(TypeWithSettableNullableProperties sut)
+            {
+                // Arrange
+                var originalMiddleName = sut.MiddleName;
+                var originalAge = sut.Age;
+
+                // Act
+                _ = sut.Without(p => p.MiddleName).Without(p => p.Age);
+
+                // Assert
+                sut.MiddleName.Should().Be(originalMiddleName, because: "Without returns a new instance");
+                sut.Age.Should().Be(originalAge, because: "Without returns a new instance");
+            }
+
+            [Theory, AutoData]
+            internal void Can_be_chained_with_With(TypeWithSettableNullableProperties sut, string newName)
+            {
+                // Act
+                var result = sut
+                    .With(p => p.Name, newName)
+                    .Without(p => p.MiddleName);
+
+                // Assert
+                result.Name.Should().Be(newName);
+                result.MiddleName.Should().BeNull();
+                result.Age.Should().Be(sut.Age);
+            }
+
+            [Fact]
+            internal void Throws_exception_if_instance_is_null()
+            {
+                // Arrange + Act
+                Action act = () => (null as TypeWithSettableNullableProperties)!.Without(p => p.MiddleName);
+
+                // Assert
+                act.Should().Throw<ArgumentNullException>(because: "the instance is null");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_exception_if_the_expression_represents_a_nested_property(TypeWithNestedNullableProperty sut)
+            {
+                // Arrange + Act
+                Action act = () => sut.Without(p => p.Nested.MiddleName);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "nested properties are not supported");
             }
         }
     }

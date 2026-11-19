@@ -10,6 +10,8 @@ namespace Typesafe.With
         extension<T>(T instance)
             where T : notnull
         {
+            public T Without<TProperty>(Expression<Func<T, TProperty>> propertyPicker)
+                => instance.With(propertyPicker, default(TProperty)!);
             
             public T With<TProperty>(
                 Expression<Func<T, TProperty>> propertyPicker,
