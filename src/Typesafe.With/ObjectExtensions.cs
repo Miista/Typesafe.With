@@ -18,6 +18,7 @@ namespace Typesafe.With
             {
                 if (instance is null) throw new ArgumentNullException(nameof(instance));
                 if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
+                if (propertyValueFactory is null) throw new ArgumentNullException(nameof(propertyValueFactory));
 
                 var propertyName = propertyPicker.PropertyName;
                 var properties = new Dictionary<string, object?>

@@ -108,7 +108,6 @@ namespace Typesafe.With
         /// <typeparam name="TInstance">The instance type.</typeparam>
         /// <returns>A mutated instance.</returns>
         /// <exception cref="InvalidOperationException">If the property does not exist or cannot be written to.</exception>
-        /// <exception cref="ArgumentNullException">If any of the arguments are null.</exception>
         private static (TInstance Instance, IDictionary<string, object?> RemainingProperties) EnrichByProperty<TInstance>(
             TInstance instance,
             IDictionary<string, object?> propertiesToSet,
