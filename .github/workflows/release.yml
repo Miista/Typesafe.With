@@ -31,14 +31,8 @@ jobs:
             exit 1
           fi
 
-      - name: Restore
-        run: dotnet restore src/Typesafe.With.sln
-
-      - name: Build
-        run: dotnet build src/Typesafe.With.sln --configuration Release --no-restore
-
       - name: Test
-        run: dotnet test src/Typesafe.With.sln --configuration Release --no-build
+        run: dotnet test src/Typesafe.With.sln --configuration Release
 
       - name: Pack
         run: >
