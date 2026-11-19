@@ -34,10 +34,10 @@ namespace Typesafe.With.Tests
             public class PropertyValueFactory
             {
                 [Theory, AutoData]
-                internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
+                internal void Throws_exception_if_instance_is_null(Expression<Func<string, string>> expression)
                 {
                     // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, expression);
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(p => p.SettableProperty, expression);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
@@ -47,7 +47,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, Expression<Func<string, string>> expression)
                 {
                     // Arrange + Act
-                    Action act = () => instance.With<TypeWithConstructorTakingNonPropertyParameter, string>(null, expression);
+                    Action act = () => instance.With<TypeWithConstructorTakingNonPropertyParameter, string>(null!, expression);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
@@ -57,7 +57,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_propertyValueFactory_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
                 {
                     // Arrange + Act
-                    Action act = () => instance.With(_ => _.SettableProperty, (Expression<Func<string, string>>) null);
+                    Action act = () => instance.With(p => p.SettableProperty, (Expression<Func<string, string>>) null!);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the property value factory parameter is null");
@@ -67,10 +67,10 @@ namespace Typesafe.With.Tests
             public class PropertyValue
             {
                 [Theory, AutoData]
-                internal void Throws_exception_if_instance_is_null(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
+                internal void Throws_exception_if_instance_is_null(string newValue)
                 {
                     // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(_ => _.SettableProperty, newValue);
+                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(p => p!.SettableProperty, newValue);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
@@ -80,7 +80,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_propertyPicker_is_null(TypeWithConstructorTakingNonPropertyParameter instance, string newValue)
                 {
                     // Arrange + Act
-                    Action act = () => instance.With(null, newValue);
+                    Action act = () => instance.With(null!, newValue);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the property picker parameter is null");
@@ -90,7 +90,7 @@ namespace Typesafe.With.Tests
                 internal void Does_not_throw_exception_if_propertyValue_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
                 {
                     // Arrange + Act
-                    Action act = () => instance.With(_ => _.SettableProperty, (string) null);
+                    Action act = () => instance.With(p => p.SettableProperty, (string) null);
                 
                     // Assert
                     act.Should().NotThrow<ArgumentNullException>(because: "the new value is allowed to be null");
@@ -101,7 +101,7 @@ namespace Typesafe.With.Tests
             internal void Throws_exception_if_constructor_has_parameter_for_which_there_is_no_property(TypeWithConstructorTakingNonPropertyParameter instance)
             {
                 // Arrange + Act
-                Action act = () => instance.With(_ => _.SettableProperty, "Hey");
+                Action act = () => instance.With(p => p.SettableProperty, "Hey");
 
                 // Assert
                 act.Should()
@@ -123,7 +123,7 @@ namespace Typesafe.With.Tests
             internal void Throws_exception_if_there_is_no_way_to_set_the_remaining_properties(TypeWithNonSettableProperty instance)
             {
                 // Arrange + Act
-                Action act = () => instance.With(_ => _.NonSettableProperty, 2);
+                Action act = () => instance.With(p => p.NonSettableProperty, 2);
 
                 // Assert
                 act.Should()
@@ -150,7 +150,7 @@ namespace Typesafe.With.Tests
             internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                Action act = () => instance.With(_ => _.Nested.Text, newValue);
+                Action act = () => instance.With(p => p.Nested.Text, newValue);
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the expression represents a nested property");
@@ -167,8 +167,8 @@ namespace Typesafe.With.Tests
 
                 public static TypeWithPrivateConstructor Create(string text) => new TypeWithPrivateConstructor(text);
             }
-            
-            internal class TypeTakingTypeWithPrivateConstructor
+
+            private class TypeTakingTypeWithPrivateConstructor
             {
                 public TypeWithPrivateConstructor OtherType { get; }
 
@@ -186,7 +186,7 @@ namespace Typesafe.With.Tests
                 var instance = new TypeTakingTypeWithPrivateConstructor(otherType);
 
                 // Act
-                Action act = () => instance.With(_ => _.OtherType.Text, newText);
+                Action act = () => instance.With(p => p.OtherType.Text, newText);
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the type does not have a public constructor");
@@ -201,7 +201,7 @@ namespace Typesafe.With.Tests
             internal void Supports_casting_the_property_in_the_expression(TypeWithNonNullableProperty instance, int newValue)
             {
                 // Arrange + Act
-                Func<TypeWithNonNullableProperty> act = () => instance.With(_ => (int?) _.NullableProperty, newValue);
+                Func<TypeWithNonNullableProperty> act = () => instance.With(p => (int?) p.NullableProperty, newValue);
 
                 // Assert
                 act.Should().NotThrow(because: "this is no exceptional case");
@@ -220,10 +220,90 @@ namespace Typesafe.With.Tests
             internal void Throws_exception_if_the_expression_does_not_represent_a_property(TypeWithMethod instance, int newValue)
             {
                 // Arrange + Act
-                Func<TypeWithMethod> act = () => instance.With(_ => _.Nothing(), newValue);
+                Func<TypeWithMethod> act = () => instance.With(p => p.Nothing(), newValue);
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the expression does not represent a property");
+            }
+
+            internal class TypeWithField
+            {
+                public string Field = "";
+                public string Text { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_expression_represents_a_field(TypeWithField instance, string newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(p => p.Field, newValue);
+
+                // Assert
+                act.Should()
+                    .Throw<InvalidOperationException>(because: "fields are not supported")
+                    .WithMessage("*Field*not a property*");
+            }
+
+            private static class StaticHolder
+            {
+                public static string Text { get; set; } = "";
+            }
+
+            internal class TypeWithText
+            {
+                public string Text { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_expression_represents_a_static_property(TypeWithText instance, string newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(_ => StaticHolder.Text, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the property is not accessed on the parameter");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_expression_represents_a_property_on_a_captured_object(TypeWithText instance, TypeWithText other, string newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(_ => other.Text, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the property is not accessed on the parameter");
+            }
+
+            internal class TypeWithListOfItems
+            {
+                public string Text { get; set; }
+                public List<TypeWithText> Items { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_expression_represents_a_property_on_an_indexed_item(TypeWithListOfItems instance, string newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(p => p.Items[0].Text, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the property is not accessed on the parameter");
+            }
+
+            internal class TypeWithNestedAndOwnText
+            {
+                public string Text { get; set; }
+                public TypeWithText Nested { get; set; }
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_expression_represents_a_casted_nested_property(TypeWithNestedAndOwnText instance, string newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(p => (object) p.Nested.Text, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the expression represents a nested property");
             }
         }
         
@@ -243,7 +323,7 @@ namespace Typesafe.With.Tests
             internal void Can_handle_inherited_property_with_setter(ChildClassWithSetter childClass, string newValue)
             {
                 // Act
-                var result = childClass.With(c => c.String, newValue);
+                var result = childClass.With(p => p.String, newValue);
                 
                 // Assert
                 result.Should().NotBeNull();
@@ -265,7 +345,7 @@ namespace Typesafe.With.Tests
             internal void Can_handle_inherited_property_with_inherited_internal_setter(ChildClassWithInheritedInternalSetter childClass, string newValue)
             {
                 // Act
-                var result = childClass.With(c => c.String, newValue);
+                var result = childClass.With(p => p.String, newValue);
                 
                 // Assert
                 result.Should().NotBeNull();
@@ -294,7 +374,7 @@ namespace Typesafe.With.Tests
             internal void Can_handle_inherited_property_with_inherited_constructor(ChildClassWithSetterAndInheritedConstructor childClass, string newValue)
             {
                 // Act
-                var result = childClass.With(c => c.String, newValue);
+                var result = childClass.With(p => p.String, newValue);
                 
                 // Assert
                 result.Should().NotBeNull();
@@ -315,7 +395,7 @@ namespace Typesafe.With.Tests
             internal void Can_handle_class_with_constructor_and_inherited_constructor(ChildClassWithConstructorAndInheritedConstructor childClass, string newValue)
             {
                 // Act
-                var result = childClass.With(c => c.String, newValue);
+                var result = childClass.With(p => p.String, newValue);
                 
                 // Assert
                 result.Should().NotBeNull();
@@ -337,7 +417,7 @@ namespace Typesafe.With.Tests
             internal void Can_handle_class_with_abstract_base_class(ChildClassWithAbstractBaseClass childClass, string newValue)
             {
                 // Act
-                var result = childClass.With(c => c.String, newValue);
+                var result = childClass.With(p => p.String, newValue);
                 
                 // Assert
                 result.Should().NotBeNull();
@@ -574,7 +654,7 @@ namespace Typesafe.With.Tests
             internal void With_fails_if_property_has_no_matching_constructor_argument(TypeWithoutMatchingConstructorArgument source, string newValue)
             {
                 // Act
-                Action act = () => source.With(_ => _.FullName, newValue);
+                Action act = () => source.With(p => p.FullName, newValue);
 
                 // Assert
                 act.Should()
@@ -604,7 +684,7 @@ namespace Typesafe.With.Tests
                 var instance = TypeWithPrivateConstructor.Create(originalText);
 
                 // Act
-                Action act = () => instance.With(_ => _.Text, newText);
+                Action act = () => instance.With(p => p.Text, newText);
 
                 // Assert
                 act.Should().Throw<Exception>(because: "the type does not have a public constructor");
@@ -839,7 +919,7 @@ namespace Typesafe.With.Tests
                 var source = new Container<T> {Value = sourceValue};
             
                 // Act
-                var result = source.With(_ => _.Value, withValue);
+                var result = source.With(p => p.Value, withValue);
             
                 // Assert
                 result.Should().BeOfType<Container<T>>();
@@ -891,9 +971,9 @@ namespace Typesafe.With.Tests
                 
                 // Act
                 var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
+                    .With(p => p.Id, withId)
+                    .With(p => p.Name, withName)
+                    .With(p => p.Age, withAge);
 
                 // Assert
                 result.Should().BeOfType<SourceWithSetters>();
@@ -923,9 +1003,9 @@ namespace Typesafe.With.Tests
 
                 // Act
                 var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
+                    .With(p => p.Id, withId)
+                    .With(p => p.Name, withName)
+                    .With(p => p.Age, withAge);
 
                 // Assert
                 result.Should().BeOfType<SourceWithConstructor>();
@@ -955,9 +1035,9 @@ namespace Typesafe.With.Tests
 
                 // Act
                 var result = source
-                    .With(_ => _.Id, withId)
-                    .With(_ => _.Name, withName)
-                    .With(_ => _.Age, withAge);
+                    .With(p => p.Id, withId)
+                    .With(p => p.Name, withName)
+                    .With(p => p.Age, withAge);
 
                 // Assert
                 result.Should().BeOfType<SourceWithMixedConstructorAndSetters>();
@@ -1028,8 +1108,8 @@ namespace Typesafe.With.Tests
             {
                 // Act
                 var result = source
-                    .With(_ => _.Fullname, newFullname)
-                    .With(_ => _.FullName, newFullName);
+                    .With(p => p.Fullname, newFullname)
+                    .With(p => p.FullName, newFullName);
             
                 // Assert
                 result.Should().NotBeNull();
@@ -1051,7 +1131,7 @@ namespace Typesafe.With.Tests
             internal void Can_set_property_which_has_different_casing_in_the_constructor(TypeWithDifferentCasingInConstructor source, string newValue)
             {
                 // Act
-                var result = source.With(_ => _.SSN, newValue);
+                var result = source.With(p => p.SSN, newValue);
 
                 // Assert
                 result.SSN.Should().Be(newValue, because: "the property is set via constructor");
@@ -1080,7 +1160,7 @@ namespace Typesafe.With.Tests
                 var sut = new TypeWithConstructor(originalName);
 
                 // Act
-                var result = sut.With(c => c.Name, name => name.Substring(newLength));
+                var result = sut.With(p => p.Name, name => name.Substring(newLength));
 
                 // Assert
                 result.Should().NotBeNull();
@@ -1102,7 +1182,7 @@ namespace Typesafe.With.Tests
                 var sut = new TypeWithProperty { Name = originalName };
 
                 // Act
-                var result = sut.With(c => c.Name, name => name.Substring(newLength));
+                var result = sut.With(p => p.Name, name => name.Substring(newLength));
 
                 // Assert
                 result.Should().NotBeNull();
@@ -1132,8 +1212,8 @@ namespace Typesafe.With.Tests
 
                 // Act
                 var result = sut
-                    .With(c => c.Name, name => name.Substring(newLength))
-                    .With(c => c.Age, age => age + 1);
+                    .With(p => p.Name, name => name.Substring(newLength))
+                    .With(p => p.Age, age => age + 1);
 
                 // Assert
                 result.Should().NotBeNull();
@@ -1155,7 +1235,7 @@ namespace Typesafe.With.Tests
                 var sut = new TypeWithManyProperties { Name = name, Age = age, Wage = wage };
 
                 // Act
-                var result = sut.With(c => c.Age, currentAge => currentAge + 1);
+                var result = sut.With(p => p.Age, currentAge => currentAge + 1);
 
                 // Assert
                 result.Should().NotBeNull();
@@ -1172,9 +1252,9 @@ namespace Typesafe.With.Tests
 
                 // Act
                 var result = sut
-                    .With(c => c.Name, newName)
-                    .With(c => c.Name, name => name.Substring(0, 10))
-                    .With(c => c.Name, name => new string(name.Reverse().ToArray()));
+                    .With(p => p.Name, newName)
+                    .With(p => p.Name, name => name.Substring(0, 10))
+                    .With(p => p.Name, name => new string(name.Reverse().ToArray()));
 
                 // Assert
                 result.Should().NotBeNull();
@@ -1198,7 +1278,7 @@ namespace Typesafe.With.Tests
                 var sut = new TypeWithEnumerableProperty(new List<string>{item1});
 
                 // Act
-                var result = sut.With(c => c.Names, names => names.Concat(new[] { item2 }));
+                var result = sut.With(p => p.Names, names => names.Concat(new[] { item2 }));
 
                 // Assert
                 result.Should().NotBeNull();
