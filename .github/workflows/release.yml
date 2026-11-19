@@ -1,18 +1,26 @@
 name: Release
 
-# Push a tag like v1.3.0 to build, test and pack. The packages are attached to a
-# GitHub release; upload Typesafe.With.<version>.nupkg to nuget.org manually.
+# Push a tag like v1.3.0 to build, test, pack, publish to nuget.org via Trusted
+# Publishing (no stored API key) and create a GitHub release with the packages.
+#
+# Requires:
+# - nuget.org Trusted Publishing policy: owner Miista, repo Typesafe.With,
+#   workflow release.yml, environment nuget
+# - GitHub environment "nuget" (add required reviewers to approve each release)
+# - Repository variable NUGET_USER: the nuget.org account name (profile name, not email)
 
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write # needed to create the GitHub release
+  contents: write # create the GitHub release
+  id-token: write # request the OIDC token for nuget.org Trusted Publishing
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: nuget
 
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +59,19 @@ jobs:
           for expected in lib/netstandard2.0/Typesafe.With.dll lib/netstandard2.0/Typesafe.With.xml docs/README.md; do
             grep -q "$expected" <<< "$contents" || { echo "::error::$expected missing from $pkg"; exit 1; }
           done
+
+      - name: Log in to nuget.org (Trusted Publishing)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish to nuget.org
+        run: >
+          dotnet nuget push "artifacts/Typesafe.With.${GITHUB_REF_NAME#v}.nupkg"
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
 
       - name: Create GitHub release
         env:
