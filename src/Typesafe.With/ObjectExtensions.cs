@@ -134,7 +134,6 @@ namespace Typesafe.With
                 return instance.PropertyDictionary.TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
             }
 
-            //return TypeUtils.GetPropertyDictionary<T>().TryGetValue(propertyName, out var propertyInfo) && propertyInfo.CanWrite;
             private bool HasConstructorParameter(string propertyName)
             {
                 var constructorParameters = instance.GetSuitableConstructor().GetParameters();
