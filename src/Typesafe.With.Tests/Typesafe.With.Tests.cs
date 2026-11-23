@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using AutoFixture.Xunit2;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 // ReSharper disable UnusedParameter.Local
