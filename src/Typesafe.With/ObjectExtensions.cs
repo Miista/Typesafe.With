@@ -13,6 +13,8 @@ namespace Typesafe.With;
 /// <remarks>
 /// The original instance is never modified. A new instance is created via the public constructor with the most parameters,
 /// and remaining properties are set via property setters or copied from the original instance.
+/// For a nested property such as <c>p =&gt; p.Address.City</c>, every object on the path is copied this way;
+/// objects off the path are shared with the original.
 /// </remarks>
 public static class ObjectExtensions
 {
@@ -29,13 +31,13 @@ public static class ObjectExtensions
         /// and to the type's default for non-nullable value types (e.g. <c>0</c> for <c>int</c>).
         /// Nullable reference type annotations are not enforced: a non-nullable reference property is set to <c>null</c>.
         /// </remarks>
-        /// <param name="propertyPicker">An expression selecting a property directly on the instance, e.g. <c>p =&gt; p.Name</c>.</param>
+        /// <param name="propertyPicker">An expression selecting a property on the instance, optionally nested, e.g. <c>p =&gt; p.Name</c> or <c>p =&gt; p.Address.City</c>.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A new instance with the property reset to its default value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="instance"/> or <paramref name="propertyPicker"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidOperationException">
-        /// <paramref name="propertyPicker"/> does not select a property directly on the instance,
-        /// or the property cannot be set via constructor or property setter.
+        /// <paramref name="propertyPicker"/> does not select a chain of properties starting at the instance,
+        /// a property on the path is <c>null</c>, or a property on the path cannot be set via constructor or property setter.
         /// </exception>
         public T Without<TProperty>(Expression<Func<T, TProperty>> propertyPicker)
             => instance.With(propertyPicker, default(TProperty)!);
@@ -43,7 +45,7 @@ public static class ObjectExtensions
         /// <summary>
         /// Returns a copy of the instance with the selected property set to a value computed from its current value.
         /// </summary>
-        /// <param name="propertyPicker">An expression selecting a property directly on the instance, e.g. <c>p =&gt; p.Age</c>.</param>
+        /// <param name="propertyPicker">An expression selecting a property on the instance, optionally nested, e.g. <c>p =&gt; p.Age</c> or <c>p =&gt; p.Owner.Age</c>.</param>
         /// <param name="propertyValueFactory">An expression computing the new value from the current value, e.g. <c>age =&gt; age + 1</c>.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A new instance with the property set to the computed value.</returns>
@@ -51,8 +53,8 @@ public static class ObjectExtensions
         /// <paramref name="instance"/>, <paramref name="propertyPicker"/> or <paramref name="propertyValueFactory"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// <paramref name="propertyPicker"/> does not select a property directly on the instance,
-        /// or the property cannot be set via constructor or property setter.
+        /// <paramref name="propertyPicker"/> does not select a chain of properties starting at the instance,
+        /// a property on the path is <c>null</c>, or a property on the path cannot be set via constructor or property setter.
         /// </exception>
         public T With<TProperty>(
             Expression<Func<T, TProperty>> propertyPicker,
@@ -72,14 +74,14 @@ public static class ObjectExtensions
         /// <remarks>
         /// Nullable reference type annotations are not enforced: a non-nullable reference property can be set to <c>null</c>.
         /// </remarks>
-        /// <param name="propertyPicker">An expression selecting a property directly on the instance, e.g. <c>p =&gt; p.Name</c>.</param>
+        /// <param name="propertyPicker">An expression selecting a property on the instance, optionally nested, e.g. <c>p =&gt; p.Name</c> or <c>p =&gt; p.Address.City</c>.</param>
         /// <param name="propertyValue">The new value of the property.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A new instance with the property set to <paramref name="propertyValue"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="instance"/> or <paramref name="propertyPicker"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidOperationException">
-        /// <paramref name="propertyPicker"/> does not select a property directly on the instance,
-        /// or the property cannot be set via constructor or property setter.
+        /// <paramref name="propertyPicker"/> does not select a chain of properties starting at the instance,
+        /// a property on the path is <c>null</c>, or a property on the path cannot be set via constructor or property setter.
         /// </exception>
         public T With<TProperty>(
             Expression<Func<T, TProperty>> propertyPicker,
