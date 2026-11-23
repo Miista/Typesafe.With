@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Typesafe.With</id>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
     <title>Typesafe: Adding typesafe with'ers</title>
     <authors>Søren Guldmund</authors>
     <owners>Søren Guldmund</owners>
@@ -15,7 +15,8 @@
     <tags>Typed With Immutable Records Functional</tags>
 	<readme>docs\README.md</readme>
     <releaseNotes>
-		* Add WithAll, which applies With to every element of an IEnumerable&lt;T&gt; (lazily evaluated; arguments validated eagerly)
+		* Support nested property pickers in With, Without and WithAll, e.g. p =&gt; p.Address.City; every object on the path is copied
+		* A nested picker with a null property on the path throws InvalidOperationException (previously all nested pickers threw)
 	</releaseNotes>
 
     <dependencies>
