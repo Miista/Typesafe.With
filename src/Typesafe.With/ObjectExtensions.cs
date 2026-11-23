@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -176,20 +175,19 @@ public static class ObjectExtensions
 
     private delegate object WithPathDelegate(object instance, IReadOnlyList<PropertyInfo> path, int index, object? leafValue);
 
-    private static readonly ConcurrentDictionary<Type, WithPathDelegate> WithPathDelegates = new();
-
     /// <summary>
-    /// Gets a cached delegate calling <c>WithPath</c> with <c>T</c> set to <paramref name="type"/>,
+    /// Creates a delegate calling <c>WithPath</c> with <c>T</c> set to <paramref name="type"/>,
     /// so nested instances are copied with the same rules as the root.
     /// </summary>
+    /// <remarks>
+    /// A delegate is used rather than <see cref="MethodBase.Invoke(object, object[])"/> so exceptions are not wrapped
+    /// in a <see cref="TargetInvocationException"/>.
+    /// </remarks>
     private static WithPathDelegate GetWithPathDelegate(Type type) =>
-        WithPathDelegates.GetOrAdd(
-            type,
-            t => (WithPathDelegate) typeof(ObjectExtensions)
-                .GetMethod(nameof(WithPathUntyped), BindingFlags.NonPublic | BindingFlags.Static)!
-                .MakeGenericMethod(t)
-                .CreateDelegate(typeof(WithPathDelegate))
-        );
+        (WithPathDelegate) typeof(ObjectExtensions)
+            .GetMethod(nameof(WithPathUntyped), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(type)
+            .CreateDelegate(typeof(WithPathDelegate));
 
     private static object WithPathUntyped<TInstance>(object instance, IReadOnlyList<PropertyInfo> path, int index, object? leafValue)
         where TInstance : notnull
