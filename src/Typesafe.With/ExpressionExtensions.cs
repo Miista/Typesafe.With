@@ -38,16 +38,14 @@ namespace Typesafe.With
                 MemberExpression { Member: PropertyInfo property, Expression: MemberExpression parent }
                     => [..GetPropertyPath(parent, parameter, expression), property],
 
-                MemberExpression { Expression: ConstantExpression } => throw new InvalidOperationException(
-                    $"Expression '{expression}' must access properties starting from the parameter (captured variables are not supported)"
-                ),
-
-                MemberExpression { Member: not PropertyInfo } member => throw new InvalidOperationException(
+                // A field on the parameter or on a property, e.g. p => p.Field
+                MemberExpression { Member: not PropertyInfo, Expression: ParameterExpression or MemberExpression } member => throw new InvalidOperationException(
                     $"Expression '{expression}' refers to '{member.Member.Name}', which is not a property"
                 ),
 
+                // Anything not rooted at the parameter, e.g. _ => captured.Name, _ => Static.Name or p => p.Items[0].Name
                 MemberExpression => throw new InvalidOperationException(
-                    $"Expression '{expression}' must access properties starting from the parameter (static, indexed or method call results are not supported)"
+                    $"Expression '{expression}' must access properties starting from the parameter (static, captured, indexed or method call results are not supported)"
                 ),
 
                 _ => throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'")
