@@ -1568,9 +1568,9 @@ namespace Typesafe.With.Tests
                 IEnumerable<Container> collection = null!;
 
                 FluentActions.Invoking(() => collection.WithAll(c => c.Value, 1))
-                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("collection");
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("source");
                 FluentActions.Invoking(() => collection.WithAll(c => c.Value, i => i))
-                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("collection");
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("source");
             }
 
             [Fact]

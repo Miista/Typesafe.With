@@ -15,8 +15,8 @@ namespace Typesafe.With;
 public static class EnumerableExtensions
 {
     /// <typeparam name="T">The type of the elements.</typeparam>
-    /// <param name="collection">The sequence whose elements to copy.</param>
-    extension<T>(IEnumerable<T> collection)
+    /// <param name="source">The sequence whose elements to copy.</param>
+    extension<T>(IEnumerable<T> source)
         where T : notnull
     {
         /// <summary>
@@ -26,17 +26,17 @@ public static class EnumerableExtensions
         /// <param name="propertyValue">The new value of the property.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A lazily evaluated sequence of new instances with the property set to <paramref name="propertyValue"/>.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="collection"/> or <paramref name="propertyPicker"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="propertyPicker"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a property directly on the element,
         /// or the property cannot be set via constructor or property setter.
         /// </exception>
         public IEnumerable<T> WithAll<TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty propertyValue)
         {
-            if (collection is null) throw new ArgumentNullException(nameof(collection));
+            if (source is null) throw new ArgumentNullException(nameof(source));
             if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            return collection.Select(e => e.With(propertyPicker, propertyValue));
+            return source.Select(e => e.With(propertyPicker, propertyValue));
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ public static class EnumerableExtensions
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A lazily evaluated sequence of new instances with the property set to the computed value.</returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="collection"/>, <paramref name="propertyPicker"/> or <paramref name="propertyFactory"/> is <c>null</c>.
+        /// <paramref name="source"/>, <paramref name="propertyPicker"/> or <paramref name="propertyFactory"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a property directly on the element,
@@ -58,11 +58,11 @@ public static class EnumerableExtensions
             Expression<Func<TProperty, TProperty>> propertyFactory
         )
         {
-            if (collection is null) throw new ArgumentNullException(nameof(collection));
+            if (source is null) throw new ArgumentNullException(nameof(source));
             if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
             if (propertyFactory is null) throw new ArgumentNullException(nameof(propertyFactory));
 
-            return collection.Select(e => e.With(propertyPicker, propertyFactory));
+            return source.Select(e => e.With(propertyPicker, propertyFactory));
         }
     }
 }
