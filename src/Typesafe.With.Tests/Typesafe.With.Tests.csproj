@@ -5,6 +5,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Test models leave non-nullable properties uninitialised on purpose -->
+    <NoWarn>$(NoWarn);CS8618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

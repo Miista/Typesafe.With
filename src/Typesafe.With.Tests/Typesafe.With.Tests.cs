@@ -37,7 +37,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_instance_is_null(Expression<Func<string, string>> expression)
                 {
                     // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(p => p.SettableProperty, expression);
+                    Action act = () => ((TypeWithConstructorTakingNonPropertyParameter) null!).With(p => p.SettableProperty, expression);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
@@ -70,7 +70,7 @@ namespace Typesafe.With.Tests
                 internal void Throws_exception_if_instance_is_null(string newValue)
                 {
                     // Arrange + Act
-                    Action act = () => (null as TypeWithConstructorTakingNonPropertyParameter).With(p => p!.SettableProperty, newValue);
+                    Action act = () => ((TypeWithConstructorTakingNonPropertyParameter) null!).With(p => p.SettableProperty, newValue);
                 
                     // Assert
                     act.Should().Throw<ArgumentNullException>(because: "the instance is null");
@@ -90,7 +90,7 @@ namespace Typesafe.With.Tests
                 internal void Does_not_throw_exception_if_propertyValue_is_null(TypeWithConstructorTakingNonPropertyParameter instance)
                 {
                     // Arrange + Act
-                    Action act = () => instance.With(p => p.SettableProperty, (string) null);
+                    Action act = () => instance.With(p => p.SettableProperty, (string) null!);
                 
                     // Assert
                     act.Should().NotThrow<ArgumentNullException>(because: "the new value is allowed to be null");
