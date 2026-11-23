@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Typesafe.With;
 
@@ -61,18 +63,7 @@ public static class ObjectExtensions
             if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
             if (propertyValueFactory is null) throw new ArgumentNullException(nameof(propertyValueFactory));
 
-            var propertyName = propertyPicker.PropertyName;
-            var properties = new Dictionary<string, object?>
-            {
-                {propertyName, new DependentValue(propertyValueFactory)}
-            };
-
-            instance.Validate(propertyName);
-                
-            var constructor = instance.GetSuitableConstructor();
-            var builder = new UnifiedWithBuilder<T>(constructor);
-                
-            return builder.Construct(instance, properties);
+            return instance.WithPath(propertyPicker.PropertyPath, 0, new DependentValue(propertyValueFactory));
         }
 
         /// <summary>
@@ -97,17 +88,44 @@ public static class ObjectExtensions
             if (instance is null) throw new ArgumentNullException(nameof(instance));
             if (propertyPicker is null) throw new ArgumentNullException(nameof(propertyPicker));
 
-            var propertyName = propertyPicker.PropertyName;
+            return instance.WithPath(propertyPicker.PropertyPath, 0, propertyValue);
+        }
+
+        /// <summary>
+        /// Copies the instance with <c>path[index]</c> set. For a nested path, the property's current value is
+        /// copied recursively first, and the copy is assigned to the property.
+        /// </summary>
+        /// <param name="path">The properties from the instance to the property to set.</param>
+        /// <param name="index">The position in <paramref name="path"/> of the property on this instance.</param>
+        /// <param name="leafValue">The new value of the last property in the path, or a <see cref="DependentValue"/>.</param>
+        private T WithPath(IReadOnlyList<PropertyInfo> path, int index, object? leafValue)
+        {
+            var property = path[index];
+            var propertyName = property.Name.ToParameterCase();
+
+            if (index == path.Count - 1) return instance.WithProperty(propertyName, leafValue);
+
+            var nestedInstance = property.GetValue(instance) ?? throw new InvalidOperationException(
+                $"Error calling {nameof(With)} on type {typeof(T)}: Property '{property.Name}' is null, so its nested property '{path[index + 1].Name}' cannot be set."
+            );
+
+            var nestedCopy = GetWithPathDelegate(property.PropertyType)(nestedInstance, path, index + 1, leafValue);
+
+            return instance.WithProperty(propertyName, nestedCopy);
+        }
+
+        private T WithProperty(string propertyName, object? value)
+        {
             var properties = new Dictionary<string, object?>
             {
-                {propertyName, propertyValue}
+                {propertyName, value}
             };
 
             instance.Validate(propertyName);
-                
+
             var constructor = instance.GetSuitableConstructor();
             var builder = new UnifiedWithBuilder<T>(constructor);
-                
+
             return builder.Construct(instance, properties);
         }
 
@@ -153,4 +171,25 @@ public static class ObjectExtensions
             return false;
         }
     }
+
+    private delegate object WithPathDelegate(object instance, IReadOnlyList<PropertyInfo> path, int index, object? leafValue);
+
+    private static readonly ConcurrentDictionary<Type, WithPathDelegate> WithPathDelegates = new();
+
+    /// <summary>
+    /// Gets a cached delegate calling <c>WithPath</c> with <c>T</c> set to <paramref name="type"/>,
+    /// so nested instances are copied with the same rules as the root.
+    /// </summary>
+    private static WithPathDelegate GetWithPathDelegate(Type type) =>
+        WithPathDelegates.GetOrAdd(
+            type,
+            t => (WithPathDelegate) typeof(ObjectExtensions)
+                .GetMethod(nameof(WithPathUntyped), BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(t)
+                .CreateDelegate(typeof(WithPathDelegate))
+        );
+
+    private static object WithPathUntyped<TInstance>(object instance, IReadOnlyList<PropertyInfo> path, int index, object? leafValue)
+        where TInstance : notnull
+        => ((TInstance) instance).WithPath(path, index, leafValue);
 }

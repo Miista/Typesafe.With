@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -8,7 +9,11 @@ namespace Typesafe.With
     {
         extension<T, TProperty>(Expression<Func<T, TProperty>> expression)
         {
-            public string PropertyName
+            /// <summary>
+            /// The chain of properties selected by the expression, from the parameter to the leaf,
+            /// e.g. <c>[Owner, Address, City]</c> for <c>c =&gt; c.Owner.Address.City</c>.
+            /// </summary>
+            public IReadOnlyList<PropertyInfo> PropertyPath
             {
                 get
                 {
@@ -17,22 +22,42 @@ namespace Typesafe.With
                         ? unary.Operand
                         : expression.Body;
 
-                    return body switch
+                    var members = new List<MemberExpression>();
+
+                    while (body is MemberExpression member)
                     {
-                        // The only valid shape: a property accessed directly on the lambda parameter
-                        MemberExpression { Member: PropertyInfo property } member when member.Expression == expression.Parameters[0]
-                            => property.Name.ToParameterCase(),
+                        members.Insert(0, member);
+                        body = member.Expression;
+                    }
 
-                        MemberExpression { Member: not PropertyInfo } member => throw new InvalidOperationException(
-                            $"Expression '{expression}' refers to '{member.Member.Name}', which is not a property"
-                        ),
+                    if (members.Count == 0)
+                    {
+                        throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'");
+                    }
 
-                        MemberExpression => throw new InvalidOperationException(
-                            $"Expression '{expression}' must access a property directly on the parameter (nested, static or captured properties are not supported)"
-                        ),
+                    // The path must start at the lambda parameter, e.g. not at a static or captured object, or an indexer or method call
+                    if (body != expression.Parameters[0])
+                    {
+                        throw new InvalidOperationException(
+                            $"Expression '{expression}' must access properties starting from the parameter (static, captured, indexed or method call results are not supported)"
+                        );
+                    }
 
-                        _ => throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'")
-                    };
+                    var path = new List<PropertyInfo>(members.Count);
+
+                    foreach (var member in members)
+                    {
+                        if (member.Member is not PropertyInfo property)
+                        {
+                            throw new InvalidOperationException(
+                                $"Expression '{expression}' refers to '{member.Member.Name}', which is not a property"
+                            );
+                        }
+
+                        path.Add(property);
+                    }
+
+                    return path;
                 }
             }
         }
