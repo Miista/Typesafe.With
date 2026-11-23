@@ -13,8 +13,7 @@ namespace Typesafe.With
             /// The chain of properties selected by the expression, from the parameter to the leaf,
             /// e.g. <c>[Owner, Address, City]</c> for <c>c =&gt; c.Owner.Address.City</c>.
             /// </summary>
-            public IReadOnlyList<PropertyInfo> PropertyPath =>
-                GetPropertyPath(expression.Body, expression.Parameters[0], expression);
+            public IReadOnlyList<PropertyInfo> PropertyPath => GetPropertyPath(expression.Body, expression.Parameters[0], expression);
         }
 
         private static List<PropertyInfo> GetPropertyPath(Expression? node, ParameterExpression parameter, LambdaExpression expression) =>

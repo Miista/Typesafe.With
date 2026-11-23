@@ -211,6 +211,16 @@ namespace Typesafe.With.Tests
                 result.NullableProperty.Should().Be(newValue, because: "that is the value passed to the With method");
             }
 
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_property_is_converted_more_than_once(TypeWithNonNullableProperty instance, int newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(p => (object) (int?) p.NullableProperty, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "only the outermost conversion is stripped");
+            }
+
             internal class TypeWithMethod
             {
                 public int Nothing() => default(int);
