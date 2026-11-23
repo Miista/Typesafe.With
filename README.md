@@ -105,6 +105,25 @@ var malfoy = harry
 Console.WriteLine(malfoy.House); // Prints "Gryffindor"
 ```
 
+### Update a property on every element of a collection
+`WithAll` applies `With` to every element of an `IEnumerable<T>`.
+Like LINQ, the result is evaluated lazily.
+
+```csharp
+public class Person
+{
+    public string Name { get; }
+    public int Age { get; }
+    
+    public Person(string name, int age) => (Name, Age) = (name, age);
+}
+
+var people = new[] { new Person("Harry Potter", 11), new Person("Hermione Granger", 12) };
+
+var renamed = people.WithAll(p => p.Name, "Anonymous");    // Every Name is "Anonymous"
+var older = people.WithAll(p => p.Age, age => age + 1);    // Ages are 12 and 13
+```
+
 ## How it works
 The resulting type `T` is constructed via the following steps:
 
