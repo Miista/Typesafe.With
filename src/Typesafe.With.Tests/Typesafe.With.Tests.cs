@@ -1528,5 +1528,70 @@ namespace Typesafe.With.Tests
                 act.Should().Throw<InvalidOperationException>(because: "nested properties are not supported");
             }
         }
+
+        public class WithAll
+        {
+            internal class Container
+            {
+                public int Value { get; }
+
+                public Container(int value) => Value = value;
+            }
+
+            [Theory, AutoData]
+            internal void Sets_value_on_every_element(Container[] original, int newValue)
+            {
+                // Act
+                var updated = original.WithAll(c => c.Value, newValue).ToArray();
+
+                // Assert
+                updated.Should().HaveSameCount(original);
+                updated.Select(c => c.Value).Should().AllBeEquivalentTo(newValue);
+            }
+
+            [Theory, AutoData]
+            internal void Applies_factory_to_every_element(Container[] original)
+            {
+                // Arrange
+                var expected = original.Select(c => 2 * c.Value).ToArray();
+
+                // Act
+                var updated = original.WithAll(c => c.Value, i => 2 * i).ToArray();
+
+                // Assert
+                updated.Select(c => c.Value).Should().Equal(expected, because: "order and count are preserved");
+            }
+
+            [Fact]
+            internal void Throws_eagerly_when_collection_is_null()
+            {
+                IEnumerable<Container> collection = null!;
+
+                FluentActions.Invoking(() => collection.WithAll(c => c.Value, 1))
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("source");
+                FluentActions.Invoking(() => collection.WithAll(c => c.Value, i => i))
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("source");
+            }
+
+            [Fact]
+            internal void Throws_eagerly_when_property_picker_is_null()
+            {
+                var collection = new[] { new Container(1) };
+
+                FluentActions.Invoking(() => collection.WithAll(null!, 1))
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("propertyPicker");
+                FluentActions.Invoking(() => collection.WithAll<Container, int>(null!, i => i))
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("propertyPicker");
+            }
+
+            [Fact]
+            internal void Throws_eagerly_when_property_factory_is_null()
+            {
+                var collection = new[] { new Container(1) };
+
+                FluentActions.Invoking(() => collection.WithAll(c => c.Value, (Expression<Func<int, int>>)null!))
+                    .Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("propertyFactory");
+            }
+        }
     }
 }
