@@ -1528,5 +1528,39 @@ namespace Typesafe.With.Tests
                 act.Should().Throw<InvalidOperationException>(because: "nested properties are not supported");
             }
         }
+
+        public class WithAll
+        {
+            internal class Container
+            {
+                public int Value { get; }
+
+                public Container(int value) => Value = value;
+            }
+
+            [Theory, AutoData]
+            internal void Sets_value_on_every_element(Container[] original, int newValue)
+            {
+                // Act
+                var updated = original.WithAll(c => c.Value, newValue).ToArray();
+
+                // Assert
+                updated.Should().HaveSameCount(original);
+                updated.Select(c => c.Value).Should().AllBeEquivalentTo(newValue);
+            }
+
+            [Theory, AutoData]
+            internal void Applies_factory_to_every_element(Container[] original)
+            {
+                // Arrange
+                var expected = original.Select(c => 2 * c.Value).ToArray();
+
+                // Act
+                var updated = original.WithAll(c => c.Value, i => 2 * i).ToArray();
+
+                // Assert
+                updated.Select(c => c.Value).Should().Equal(expected, because: "order and count are preserved");
+            }
+        }
     }
 }
