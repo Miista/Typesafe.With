@@ -13,23 +13,17 @@ namespace Typesafe.With
             /// The chain of properties selected by the expression, from the parameter to the leaf,
             /// e.g. <c>[Owner, Address, City]</c> for <c>c =&gt; c.Owner.Address.City</c>.
             /// </summary>
-            public IReadOnlyList<PropertyInfo> PropertyPath
-            {
-                get
-                {
-                    // Strip boxing/conversion, e.g. x => (object)x.Age
-                    var body = expression.Body is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } unary
-                        ? unary.Operand
-                        : expression.Body;
-
-                    return GetPropertyPath(body, expression.Parameters[0], expression);
-                }
-            }
+            public IReadOnlyList<PropertyInfo> PropertyPath =>
+                GetPropertyPath(expression.Body, expression.Parameters[0], expression);
         }
 
         private static List<PropertyInfo> GetPropertyPath(Expression? node, ParameterExpression parameter, LambdaExpression expression) =>
             node switch
             {
+                // A converted property, e.g. p => (object) p.Age; only the outermost conversion is stripped
+                UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } convert when convert == expression.Body
+                    => GetPropertyPath(convert.Operand, parameter, expression),
+
                 // A property accessed directly on the parameter, e.g. p => p.Name
                 MemberExpression { Member: PropertyInfo property } member when member.Expression == parameter
                     => [property],
