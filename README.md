@@ -105,6 +105,38 @@ var malfoy = harry
 Console.WriteLine(malfoy.House); // Prints "Gryffindor"
 ```
 
+### Update a nested property
+A property picker can follow a chain of properties.
+Every object on the path is copied; the original is left untouched.
+
+```csharp
+public class Address
+{
+    public string Street { get; }
+    public string City { get; }
+    
+    public Address(string street, string city) => (Street, City) = (street, city);
+}
+
+public class Person
+{
+    public string Name { get; }
+    public Address Address { get; }
+    
+    public Person(string name, Address address) => (Name, Address) = (name, address);
+}
+
+var harry = new Person("Harry Potter", new Address("4 Privet Drive", "Little Whinging"));
+var moved = harry.With(p => p.Address.Street, "12 Grimmauld Place");
+
+Console.WriteLine(moved.Address.Street); // Prints "12 Grimmauld Place"
+Console.WriteLine(moved.Address.City);   // Prints "Little Whinging"
+Console.WriteLine(harry.Address.Street); // Prints "4 Privet Drive"
+```
+
+Every property on the path must be settable (via constructor or property setter) and not `null`.
+Fields, indexers and method calls are not supported in the path.
+
 ### Update a property on every element of a collection
 `WithAll` applies `With` to every element of an `IEnumerable<T>`.
 Like LINQ, the result is evaluated lazily.

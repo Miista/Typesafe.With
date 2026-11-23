@@ -147,13 +147,13 @@ namespace Typesafe.With.Tests
             }
             
             [Theory, AutoData]
-            internal void Does_not_support_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
+            internal void Supports_expression_representing_a_nested_property(TypeWithNestedProperty instance, string newValue)
             {
                 // Act
-                Action act = () => instance.With(p => p.Nested.Text, newValue);
+                var result = instance.With(p => p.Nested.Text, newValue);
 
                 // Assert
-                act.Should().Throw<Exception>(because: "the expression represents a nested property");
+                result.Nested.Text.Should().Be(newValue);
             }
             
             internal class TypeWithPrivateConstructor
@@ -209,6 +209,16 @@ namespace Typesafe.With.Tests
                 var result = act();
                 result.Should().NotBeNull();
                 result.NullableProperty.Should().Be(newValue, because: "that is the value passed to the With method");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_property_is_converted_more_than_once(TypeWithNonNullableProperty instance, int newValue)
+            {
+                // Arrange + Act
+                Action act = () => instance.With(p => (object) (int?) p.NullableProperty, newValue);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "only the outermost conversion is stripped");
             }
 
             internal class TypeWithMethod
@@ -297,13 +307,14 @@ namespace Typesafe.With.Tests
             }
 
             [Theory, AutoData]
-            internal void Throws_InvalidOperationException_if_the_expression_represents_a_casted_nested_property(TypeWithNestedAndOwnText instance, string newValue)
+            internal void Supports_casting_a_nested_property_in_the_expression(TypeWithNestedAndOwnText instance, string newValue)
             {
                 // Arrange + Act
-                Action act = () => instance.With(p => (object) p.Nested.Text, newValue);
+                var result = instance.With(p => (object) p.Nested.Text, newValue);
 
                 // Assert
-                act.Should().Throw<InvalidOperationException>(because: "the expression represents a nested property");
+                result.Nested.Text.Should().Be(newValue, because: "the nested property is selected");
+                result.Text.Should().Be(instance.Text, because: "the outer property with the same name is untouched");
             }
         }
         
@@ -1519,13 +1530,182 @@ namespace Typesafe.With.Tests
             }
 
             [Theory, AutoData]
-            internal void Throws_exception_if_the_expression_represents_a_nested_property(TypeWithNestedNullableProperty sut)
+            internal void Resets_a_nested_property(TypeWithNestedNullableProperty sut)
             {
-                // Arrange + Act
-                Action act = () => sut.Without(p => p.Nested.MiddleName);
+                // Act
+                var result = sut.Without(p => p.Nested.MiddleName);
 
                 // Assert
-                act.Should().Throw<InvalidOperationException>(because: "nested properties are not supported");
+                result.Nested.MiddleName.Should().BeNull();
+                result.Nested.Name.Should().Be(sut.Nested.Name, because: "sibling properties are copied");
+            }
+        }
+
+        public class NestedProperties
+        {
+            internal class Address
+            {
+                public string Street { get; }
+                public string City { get; }
+
+                public Address(string street, string city) => (Street, City) = (street, city);
+            }
+
+            internal class Person
+            {
+                public string Name { get; }
+                public Address Address { get; }
+
+                public Person(string name, Address address) => (Name, Address) = (name, address);
+            }
+
+            internal class Company
+            {
+                public string Name { get; set; }
+                public Person Owner { get; set; }
+            }
+
+            internal class SettableLeaf
+            {
+                public string Text { get; set; }
+                public int Number { get; set; }
+            }
+
+            internal class SettableRoot
+            {
+                public SettableLeaf Leaf { get; set; }
+            }
+
+            internal class RootWithReadOnlyNested
+            {
+                public SettableLeaf Leaf { get; } = new();
+            }
+
+            internal class RootWithField
+            {
+                public SettableLeaf Leaf = new();
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nested_property_via_constructors(Person original, string newCity)
+            {
+                // Act
+                var result = original.With(p => p.Address.City, newCity);
+
+                // Assert
+                result.Address.City.Should().Be(newCity);
+                result.Address.Street.Should().Be(original.Address.Street, because: "sibling properties are copied");
+                result.Name.Should().Be(original.Name, because: "properties on the root are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_nested_property_via_setters(SettableRoot original, string newText)
+            {
+                // Act
+                var result = original.With(p => p.Leaf.Text, newText);
+
+                // Assert
+                result.Leaf.Text.Should().Be(newText);
+                result.Leaf.Number.Should().Be(original.Leaf.Number, because: "sibling properties are copied");
+            }
+
+            [Theory, AutoData]
+            internal void Does_not_modify_the_original_instance(Person original, string newCity)
+            {
+                // Arrange
+                var originalAddress = original.Address;
+                var originalCity = original.Address.City;
+
+                // Act
+                var result = original.With(p => p.Address.City, newCity);
+
+                // Assert
+                original.Address.Should().BeSameAs(originalAddress);
+                original.Address.City.Should().Be(originalCity);
+                result.Should().NotBeSameAs(original);
+                result.Address.Should().NotBeSameAs(originalAddress, because: "every object on the path is copied");
+            }
+
+            [Theory, AutoData]
+            internal void Sets_deeply_nested_property(Company original, string newCity)
+            {
+                // Act
+                var result = original.With(c => c.Owner.Address.City, newCity);
+
+                // Assert
+                result.Owner.Address.City.Should().Be(newCity);
+                result.Owner.Address.Street.Should().Be(original.Owner.Address.Street);
+                result.Owner.Name.Should().Be(original.Owner.Name);
+                result.Name.Should().Be(original.Name);
+            }
+
+            [Theory, AutoData]
+            internal void Applies_value_factory_to_nested_property(Company original)
+            {
+                // Act
+                var result = original.With(c => c.Owner.Address.City, city => city + "!");
+
+                // Assert
+                result.Owner.Address.City.Should().Be(original.Owner.Address.City + "!");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_an_intermediate_property_is_null(SettableRoot original, string newText)
+            {
+                // Arrange
+                original.Leaf = null!;
+
+                // Act
+                Action act = () => original.With(p => p.Leaf.Text, newText);
+
+                // Assert
+                act.Should()
+                    .Throw<InvalidOperationException>(because: "there is no instance to copy")
+                    .WithMessage("*Leaf*null*");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_an_intermediate_property_cannot_be_set(RootWithReadOnlyNested original, string newText)
+            {
+                // Act
+                Action act = () => original.With(p => p.Leaf.Text, newText);
+
+                // Assert
+                act.Should()
+                    .Throw<InvalidOperationException>(because: "the copied nested instance cannot be assigned to the root")
+                    .WithMessage("*Leaf*");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_an_intermediate_member_is_a_field(RootWithField original, string newText)
+            {
+                // Act
+                Action act = () => original.With(p => p.Leaf.Text, newText);
+
+                // Assert
+                act.Should()
+                    .Throw<InvalidOperationException>(because: "fields are not supported")
+                    .WithMessage("*Leaf*not a property*");
+            }
+
+            [Theory, AutoData]
+            internal void Throws_InvalidOperationException_if_the_path_starts_at_a_captured_object(Company original, Company other, string newCity)
+            {
+                // Act
+                Action act = () => original.With(_ => other.Owner.Address.City, newCity);
+
+                // Assert
+                act.Should().Throw<InvalidOperationException>(because: "the path does not start at the parameter");
+            }
+
+            [Theory, AutoData]
+            internal void WithAll_sets_nested_property_on_every_element(Person[] original, string newCity)
+            {
+                // Act
+                var result = original.WithAll(p => p.Address.City, newCity).ToArray();
+
+                // Assert
+                result.Select(p => p.Address.City).Should().AllBeEquivalentTo(newCity);
             }
         }
 

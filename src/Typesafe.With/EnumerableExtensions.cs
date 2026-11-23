@@ -22,14 +22,14 @@ public static class EnumerableExtensions
         /// <summary>
         /// Returns a sequence of copies of the elements, each with the selected property set to the given value.
         /// </summary>
-        /// <param name="propertyPicker">An expression selecting a property directly on the element, e.g. <c>p =&gt; p.Name</c>.</param>
+        /// <param name="propertyPicker">An expression selecting a property on the element, optionally nested, e.g. <c>p =&gt; p.Name</c> or <c>p =&gt; p.Address.City</c>.</param>
         /// <param name="propertyValue">The new value of the property.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A lazily evaluated sequence of new instances with the property set to <paramref name="propertyValue"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="propertyPicker"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a property directly on the element,
-        /// or the property cannot be set via constructor or property setter.
+        /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a chain of properties starting at the element,
+        /// a property on the path is <c>null</c>, or a property on the path cannot be set via constructor or property setter.
         /// </exception>
         public IEnumerable<T> WithAll<TProperty>(Expression<Func<T, TProperty>> propertyPicker, TProperty propertyValue)
         {
@@ -42,7 +42,7 @@ public static class EnumerableExtensions
         /// <summary>
         /// Returns a sequence of copies of the elements, each with the selected property set to a value computed from its current value.
         /// </summary>
-        /// <param name="propertyPicker">An expression selecting a property directly on the element, e.g. <c>p =&gt; p.Age</c>.</param>
+        /// <param name="propertyPicker">An expression selecting a property on the element, optionally nested, e.g. <c>p =&gt; p.Age</c> or <c>p =&gt; p.Owner.Age</c>.</param>
         /// <param name="propertyFactory">An expression computing the new value from the current value, e.g. <c>age =&gt; age + 1</c>.</param>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
         /// <returns>A lazily evaluated sequence of new instances with the property set to the computed value.</returns>
@@ -50,8 +50,8 @@ public static class EnumerableExtensions
         /// <paramref name="source"/>, <paramref name="propertyPicker"/> or <paramref name="propertyFactory"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a property directly on the element,
-        /// or the property cannot be set via constructor or property setter.
+        /// Thrown on enumeration if <paramref name="propertyPicker"/> does not select a chain of properties starting at the element,
+        /// a property on the path is <c>null</c>, or a property on the path cannot be set via constructor or property setter.
         /// </exception>
         public IEnumerable<T> WithAll<TProperty>(
             Expression<Func<T, TProperty>> propertyPicker,
