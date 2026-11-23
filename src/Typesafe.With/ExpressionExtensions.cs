@@ -22,44 +22,35 @@ namespace Typesafe.With
                         ? unary.Operand
                         : expression.Body;
 
-                    var members = new List<MemberExpression>();
-
-                    while (body is MemberExpression member)
-                    {
-                        members.Insert(0, member);
-                        body = member.Expression;
-                    }
-
-                    if (members.Count == 0)
-                    {
-                        throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'");
-                    }
-
-                    // The path must start at the lambda parameter, e.g. not at a static or captured object, or an indexer or method call
-                    if (body != expression.Parameters[0])
-                    {
-                        throw new InvalidOperationException(
-                            $"Expression '{expression}' must access properties starting from the parameter (static, captured, indexed or method call results are not supported)"
-                        );
-                    }
-
-                    var path = new List<PropertyInfo>(members.Count);
-
-                    foreach (var member in members)
-                    {
-                        if (member.Member is not PropertyInfo property)
-                        {
-                            throw new InvalidOperationException(
-                                $"Expression '{expression}' refers to '{member.Member.Name}', which is not a property"
-                            );
-                        }
-
-                        path.Add(property);
-                    }
-
-                    return path;
+                    return GetPropertyPath(body, expression.Parameters[0], expression);
                 }
             }
         }
+
+        private static List<PropertyInfo> GetPropertyPath(Expression? node, ParameterExpression parameter, LambdaExpression expression) =>
+            node switch
+            {
+                // A property accessed directly on the parameter, e.g. p => p.Name
+                MemberExpression { Member: PropertyInfo property } member when member.Expression == parameter
+                    => [property],
+
+                // A property accessed on another property, e.g. p => p.Address.City
+                MemberExpression { Member: PropertyInfo property, Expression: MemberExpression parent }
+                    => [..GetPropertyPath(parent, parameter, expression), property],
+
+                MemberExpression { Expression: ConstantExpression } => throw new InvalidOperationException(
+                    $"Expression '{expression}' must access properties starting from the parameter (captured variables are not supported)"
+                ),
+
+                MemberExpression { Member: not PropertyInfo } member => throw new InvalidOperationException(
+                    $"Expression '{expression}' refers to '{member.Member.Name}', which is not a property"
+                ),
+
+                MemberExpression => throw new InvalidOperationException(
+                    $"Expression '{expression}' must access properties starting from the parameter (static, indexed or method call results are not supported)"
+                ),
+
+                _ => throw new InvalidOperationException($"Cannot retrieve property from expression '{expression}'")
+            };
     }
 }
